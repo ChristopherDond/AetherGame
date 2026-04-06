@@ -12,7 +12,7 @@ body {
 }
 canvas { display:block; cursor:crosshair; }
 .screen {
-  position:fixed; inset:0; display:flex; flex-direction:column;
+  position:fixed; inset:0; display:none; flex-direction:column;
   align-items:center; justify-content:center;
   background:rgba(3,0,8,0.97); z-index:100;
 }
@@ -31,109 +31,264 @@ canvas { display:block; cursor:crosshair; }
 .btn.red { color:#ff4455; border-color:#ff445544; }
 .btn.red:hover { background:#ff445518; border-color:#ff4455; }
 #death-reason { color:#ff6677 !important; }
+#screen-pause h1 { color:#8888cc !important; text-shadow:0 0 20px #8888cc !important; font-size:2rem !important; }
+
+/* ─── PANELS ────────────────────────────────────────────────── */
+.panel-overlay {
+  position:fixed; inset:0; z-index:50; display:none;
+  align-items:center; justify-content:center;
+}
+.panel-overlay.open { display:flex; }
+.panel-overlay .backdrop { position:absolute; inset:0; background:rgba(0,0,10,0.7); }
+
+.panel {
+  position:relative; z-index:1; background:#0a0a18;
+  border:1px solid #223355; min-width:520px; max-width:740px;
+  max-height:85vh; border-radius:3px; display:flex; flex-direction:column;
+  box-shadow:0 0 60px rgba(0,40,120,0.15);
+}
+.panel-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 18px; border-bottom:1px solid #181830;
+  flex-shrink:0;
+}
+.panel-header h2 {
+  font-size:0.85rem; color:#00bbdd; letter-spacing:0.25em; font-weight:normal;
+}
+.panel-close {
+  background:none; border:none; color:#445; font-size:1.1rem;
+  cursor:pointer; padding:2px 10px; font-family:'Courier New',monospace;
+}
+.panel-close:hover { color:#f55; }
+.panel-body { padding:14px 16px; overflow-y:auto; flex:1; }
+
+/* Build grid */
+.build-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:8px; }
+.build-card {
+  background:#0c0c1a; border:1px solid #1a1a35; padding:11px 12px;
+  border-radius:2px; cursor:pointer; transition:all 0.12s;
+}
+.build-card:hover { border-color:#446; background:#14142e; }
+.build-card.no-afford { opacity:0.35; cursor:default; }
+.build-card.no-afford:hover { border-color:#1a1a35; background:#0c0c1a; }
+.bname { font-size:0.82rem; font-weight:bold; margin-bottom:3px; }
+.bdesc { font-size:0.68rem; color:#444860; margin-bottom:7px; }
+.bbcost { font-size:0.65rem; color:#446; }
+.bbcost span { color:#778; }
+
+/* Inventory */
+.inv-list { display:flex; flex-direction:column; gap:6px; }
+.inv-row {
+  display:flex; align-items:center; gap:10px;
+  padding:5px 8px; background:#0a0a18; border-top:1px solid #14142a;
+}
+.inv-dot { width:12px; height:12px; border-radius:2px; flex-shrink:0; }
+.inv-lbl { font-size:0.75rem; color:#667; flex:1; }
+.inv-val { font-size:0.82rem; font-weight:bold; }
+.inv-footer {
+  margin-top:12px; padding-top:8px; border-top:1px solid #14142a;
+  font-size:0.72rem; color:#445; text-align:center;
+}
+
+/* Research */
+.res-list { display:flex; flex-direction:column; gap:8px; }
+.res-card {
+  background:#0c0c1a; border:1px solid #1a1a35; padding:10px 14px;
+  display:flex; align-items:center; gap:12px; border-radius:2px; transition:all 0.12s;
+}
+.res-card.done { border-color:#2a4a2a; background:#0a140a; }
+.res-card.ready { cursor:pointer; }
+.res-card.ready:hover { border-color:#4a7a4a; background:#0e1e0e; }
+.res-card.locked { opacity:0.35; }
+.res-icon {
+  width:34px; height:34px; border:1px solid #223; border-radius:3px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:0.65rem; color:#556; flex-shrink:0; background:#0a0a14;
+}
+.res-info { flex:1; }
+.res-info .rn { font-size:0.8rem; color:#7788aa; margin-bottom:2px; }
+.res-info .rd { font-size:0.67rem; color:#445; }
+.res-info .rc { font-size:0.65rem; color:#446; margin-top:3px; }
+.res-info .rc span { color:#778; }
+.res-st { font-size:0.65rem; padding:3px 8px; border:1px solid; border-radius:2px; flex-shrink:0; }
+.res-st.done { color:#3a3; border-color:#3a3; }
+.res-st.miss { color:#556; border-color:#333; }
+.res-st.ok { color:#cc0; border-color:#cc0; }
+
+/* Scrollbar */
+.panel-body::-webkit-scrollbar { width:5px; }
+.panel-body::-webkit-scrollbar-track { background:#06060e; }
+.panel-body::-webkit-scrollbar-thumb { background:#1a1a35; border-radius:3px; }
 </style>
 </head>
 <body>
 
-<div id="screen-title" class="screen">
+<!-- ─── TITLE ─── -->
+<div id="screen-title" class="screen" style="display:flex">
   <h1>AETHER</h1>
   <p>
     Sua nave caiu num planeta alienígena desconhecido.<br>
-    Minere recursos · Construa sua base · Sobreviva às noites.<br><br>
-    <span style="color:#303050">WASD/SETAS — MOVER &nbsp;|&nbsp; E (segurar) — MINERAR &nbsp;|&nbsp; 1-4 — CONSTRUIR &nbsp;|&nbsp; F — ATACAR</span>
+    Minere recursos · Construa sua base · Sobreviva.<br><br>
+    <span style="color:#303050">
+      WASD/SETAS — MOVER &nbsp;|&nbsp; E — MINERAR &nbsp;|&nbsp; B — CONSTRUIR<br>
+      I — INVENTÁRIO &nbsp;|&nbsp; R — PESQUISA &nbsp;|&nbsp; P — PAUSA
+    </span>
   </p>
   <button class="btn" onclick="startGame()">▶ INICIAR MISSÃO</button>
 </div>
 
-<div id="screen-gameover" class="screen" style="display:none">
+<!-- ─── GAME OVER ─── -->
+<div id="screen-gameover" class="screen">
   <h1 style="color:#ff4455;text-shadow:0 0 20px #ff4455,0 0 60px #ff445544">MISSÃO FALHOU</h1>
   <p id="death-reason">O astronauta não sobreviveu.</p>
   <button class="btn red" onclick="startGame()">↺ TENTAR NOVAMENTE</button>
   <button class="btn" onclick="showTitle()">← MENU</button>
 </div>
 
+<!-- ─── PAUSE ─── -->
+<div id="screen-pause" class="screen">
+  <h1>PAUSADO</h1>
+  <p>Pressione <span style="color:#888">P</span> para continuar</p>
+  <button class="btn" onclick="togglePause()">▶ CONTINUAR</button>
+  <button class="btn red" onclick="showTitle()">↺ SAIR</button>
+</div>
+
+<!-- ─── BUILD PANEL ─── -->
+<div id="panel-build" class="panel-overlay">
+  <div class="backdrop" onclick="closePanel('build')"></div>
+  <div class="panel">
+    <div class="panel-header">
+      <h2>CONSTRUÇÃO</h2>
+      <button class="panel-close" onclick="closePanel('build')">✕</button>
+    </div>
+    <div class="panel-body"><div id="build-grid" class="build-grid"></div></div>
+  </div>
+</div>
+
+<!-- ─── INVENTORY PANEL ─── -->
+<div id="panel-inventory" class="panel-overlay">
+  <div class="backdrop" onclick="closePanel('inventory')"></div>
+  <div class="panel">
+    <div class="panel-header">
+      <h2>INVENTÁRIO</h2>
+      <button class="panel-close" onclick="closePanel('inventory')">✕</button>
+    </div>
+    <div class="panel-body" id="inv-body"></div>
+  </div>
+</div>
+
+<!-- ─── RESEARCH PANEL ─── -->
+<div id="panel-research" class="panel-overlay">
+  <div class="backdrop" onclick="closePanel('research')"></div>
+  <div class="panel">
+    <div class="panel-header">
+      <h2>PESQUISA</h2>
+      <button class="panel-close" onclick="closePanel('research')">✕</button>
+    </div>
+    <div class="panel-body" id="res-body"></div>
+  </div>
+</div>
+
 <canvas id="c"></canvas>
+
 <script>
 'use strict';
-// ─── CONSTANTS ──────────────────────────────────────────────────────────────
+
+// ═══════════════════════════════════════════════════════════════
+//  CONSTANTS (no dead systems — only what's used)
+// ═══════════════════════════════════════════════════════════════
+
 const TILE=40, COLS=80, ROWS=60;
 const WW=COLS*TILE, WH=ROWS*TILE;
 const CVW=900, CVH=600;
-const DAY_PERIOD=200; // seconds per full cycle
+const DAY_PERIOD=200;
 
 const T={VOID:0,GROUND:1,ROCK:2,DEEP:3,SAND:4,FLORA:5};
 
-const RES_DATA=[
-  {name:'Crystal', color:'#00d4ff', glow:'#0055aa'},
-  {name:'Resina',  color:'#ff9900', glow:'#993300'},
-  {name:'Composto',color:'#44ff88', glow:'#008833'},
-  {name:'Minério', color:'#ff4488', glow:'#880033'},
-  {name:'Orgânico',color:'#99ff33', glow:'#336600'},
-  {name:'Gelo',    color:'#88ddff', glow:'#0099ff'},
-  {name:'Gás',     color:'#ccaa00', glow:'#ffff00'},
-  {name:'Artefato',color:'#ff00ff', glow:'#ff00aa'},
-  {name:'Joia',    color:'#ff69b4', glow:'#ff1493'},
-  {name:'Combustível', color:'#8b4513', glow:'#a0522d'},
-  {name:'Platina', color:'#e5e4e2', glow:'#ffffff'},
-  {name:'Titânio', color:'#ccccdd', glow:'#aabbcc'},
+const RES=[
+  {name:'Crystal',c:'#00d4ff'},{name:'Resina',c:'#ff9900'},{name:'Composto',c:'#44ff88'},
+  {name:'Minério',c:'#ff4488'},{name:'Orgânico',c:'#99ff33'},{name:'Gelo',c:'#88ddff'},
+  {name:'Gás',c:'#ccaa00'},{name:'Artefato',c:'#ff00ff'},{name:'Joia',c:'#ff69b4'},
+  {name:'Comb',c:'#8b4513'},{name:'Platina',c:'#e5e4e2'},{name:'Titânio',c:'#ccccdd'},
 ];
 
-const STRUCT_DATA=[
-  {name:'Habitat',    w:2,h:2,color:'#3399ff',cost:{2:6,1:4},  desc:'Regenera O²/HP'},
-  {name:'Solar',      w:2,h:1,color:'#ffdd00',cost:{0:3,3:2},  desc:'Energia dia'},
-  {name:'Depósito',   w:1,h:1,color:'#8888aa',cost:{1:4},      desc:'+cap. inv'},
-  {name:'Fabricador', w:2,h:2,color:'#ff8833',cost:{3:6,0:4},  desc:'Craftar itens'},
-  {name:'Laboratório',w:2,h:2,color:'#dd00dd',cost:{7:8,0:6},  desc:'Pesquisar'},
-  {name:'Fazenda',    w:2,h:2,color:'#00aa00',cost:{4:5,8:3},  desc:'Produz Orgânico'},
-  {name:'Extrator água',w:1,h:1,color:'#0088ff',cost:{0:4,2:3}, desc:'Produz Gelo'},
-  {name:'Turbina',    w:2,h:2,color:'#888888',cost:{10:6,0:5}, desc:'Energia noite'},
-  {name:'Escudo',     w:1,h:1,color:'#ff0000',cost:{0:8,10:5}, desc:'Proteção clima'},
-  {name:'Torre luz',  w:1,h:1,color:'#ffff00',cost:{0:3},      desc:'Ilumina área'},
-  {name:'Aterrador', w:2,h:1,color:'#555555',cost:{1:6,3:4},  desc:'Caminho base'},
-  {name:'Tanque O2',  w:1,h:1,color:'#00ffff',cost:{2:4,6:3},  desc:'Armazena O2'},
-  {name:'Gerador nuclear',w:3,h:3,color:'#00ff00',cost:{7:12,10:8,11:5}, desc:'Energia infinita'},
-  {name:'Rampa pouso',w:3,h:3,color:'#ffaa00',cost:{10:15,11:10,0:20}, desc:'Plataforma escape'},
-  {name:'Câmara pesquisa',w:2,h:2,color:'#9900ff',cost:{7:10,0:8}, desc:'Pesq. avançada'},
+const STRUCT=[
+  {name:'Habitat',     w:2,h:2,col:'#3399ff',cst:{2:6,1:4},    desc:'Regenera O² e HP'},
+  {name:'Solar',       w:2,h:1,col:'#ffdd00',cst:{0:3,3:2},    desc:'Gera energia de dia'},
+  {name:'Depósito',    w:1,h:1,col:'#88aa',cst:{1:4},           desc:'+capacidade inv'},
+  {name:'Fabricador',  w:2,h:2,col:'#ff8833',cst:{3:6,0:4},    desc:'Craftar itens'},
+  {name:'Laboratório', w:2,h:2,col:'#dd00dd',cst:{7:8,0:6},    desc:'Desbloqueia pesq.'},
+  {name:'Fazenda',     w:2,h:2,col:'#00aa00',cst:{4:5,8:3},    desc:'Produz Orgânico'},
+  {name:'Ext. água',   w:1,h:1,col:'#0088ff',cst:{0:4,2:3},    desc:'Produz Gelo'},
+  {name:'Turbina',     w:2,h:2,col:'#888888',cst:{10:6,0:5},   desc:'Energia de noite'},
+  {name:'Escudo',      w:1,h:1,col:'#ff4444',cst:{0:8,10:5},   desc:'Proteção clima'},
+  {name:'Torre luz',   w:1,h:1,col:'#ffff00',cst:{0:3},         desc:'Ilumina área'},
+  {name:'Aterrador',   w:2,h:1,col:'#555555',cst:{1:6,3:4},    desc:'Chão nivelado'},
+  {name:'Tanque O²',   w:1,h:1,col:'#00ffff',cst:{2:4,6:3},    desc:'Armazena O²'},
+  {name:'Ger. nuclear',w:3,h:3,col:'#00ff66',cst:{7:12,10:8,11:5},desc:'Energia infinita'},
+  {name:'Rampa',       w:3,h:3,col:'#ffaa00',cst:{10:15,11:10,0:20},desc:'Escape'},
+  {name:'Câm. pesq.',  w:2,h:2,col:'#9900ff',cst:{7:10,0:8},   desc:'Pesquisa avançada'},
 ];
 
-// ─── STATE ──────────────────────────────────────────────────────────────────
-let canvas,ctx,keys={},mouse={x:0,y:0,wx:0,wy:0};
-let world={tiles:null,resources:[],structures:[],particles:[],events:[]};
-let player={};
-let cam={x:0,y:0};
-let gameTime=0, dayCycle=0, frame=0, running=false, lastTime=0;
-let buildMode=null;
-let rngSeed=42;
-let techTree={}, crafting={}, paused=false, achievements={};
-let nextEventTime=0, eventType=null;
+const RESEARCH=[
+  {id:'drill1',  name:'Broca Mk.I',    cost:{7:2},   bonus:{mineSpd:1.35}, desc:'+35% velocidade mineração'},
+  {id:'drill2',  name:'Broca Mk.II',   cost:{7:4,10:3}, bonus:{mineSpd:1.75},  req:'drill1', desc:'+75% velocidade mineração'},
+  {id:'tank1',   name:'Tanque Extra',  cost:{7:3,2:4},  bonus:{maxO2:150},    req:'drill1', desc:'+50% capacidade O²'},
+  {id:'suit1',   name:'Suit Reforçada',cost:{7:6,11:4}, bonus:{maxO2:200,maxHP:150}, req:'tank1', desc:'O²++ HP++'},
+  {id:'batt1',   name:'Bateria Densa', cost:{10:4,0:6}, bonus:{},            req:'drill2', desc:'Futuro: eficiência energia'},
+];
 
-// ─── UTILS ──────────────────────────────────────────────────────────────────
-function rng(n){n=((n+rngSeed)*1664525+1013904223)&0xffffffff;return(n>>>16)/65536;}
-function noise2d(x,y){
+// ════════════════════════════════════════════
+//  UTILS
+// ════════════════════════════════════════════
+
+function lerpCol(a,b,t){
+  return [a[0]+(b[0]-a[0])*t|0, a[1]+(b[1]-a[1])*t|0, a[2]+(b[2]-a[2])*t|0];
+}
+function rectOv(ax,ay,aw,ah,bx,by,bw,bh){return ax<bx+bw&&ax+aw>bx&&ay<by+bh&&ay+ah>by;}
+function seeded(v,s){const n=((s+v)*1664525+1013904223)&0xffffffff;return(n>>>16)/65536;}
+function noise2d(x,y,s){
   const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
-  const a=rng(ix*1000+iy),b=rng((ix+1)*1000+iy),c=rng(ix*1000+(iy+1)),d=rng((ix+1)*1000+(iy+1));
+  const a=seeded(ix*1000+iy,s),b=seeded((ix+1)*1000+iy,s);
+  const c=seeded(ix*1000+(iy+1),s),d=seeded((ix+1)*1000+(iy+1),s);
   const ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);
   return a+(b-a)*ux+(c-a)*uy+(a-b-c+d)*ux*uy;
 }
-function lerpCol(a,b,t){return[a[0]+(b[0]-a[0])*t,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t].map(Math.floor);}
-function rectOverlap(ax,ay,aw,ah,bx,by,bw,bh){return ax<bx+bw&&ax+aw>bx&&ay<by+bh&&ay+ah>by;}
-function inv(ent){return{x:ent.x,y:ent.y,w:ent.w,h:ent.h};}
 
-// ─── WORLD GEN ──────────────────────────────────────────────────────────────
-function generateWorld(){
-  rngSeed=Math.floor(Math.random()*99999);
+
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+
+let canvas,ctx,keys={};
+let world={};
+let player={};
+let cam={x:0,y:0};
+let gameTime=0,dayCycle=0,frame=0,running=false,paused=false,lastTime=0;
+let buildMode=null;
+
+// Panels state
+let buildOpen=false, invOpen=false, resOpen=false;
+
+// ════════════════════════════════════════════
+//  WORLD GEN
+// ════════════════════════════════════════════
+
+function genWorld(){
+  const s=Math.floor(Math.random()*99999);
   const tiles=new Uint8Array(COLS*ROWS);
   for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
-    const n=noise2d(x/10,y/10)+noise2d(x/4,y/4)*0.3;
-    tiles[y*COLS+x]=n>0.75?T.ROCK:n>0.67?T.DEEP:n<0.22?T.SAND:rng(x*71+y*37)>0.93?T.FLORA:T.GROUND;
+    const n=noise2d(x/10,y/10,s)+noise2d(x/4,y/4,s)*0.3;
+    tiles[y*COLS+x]=n>.75?T.ROCK:n>.67?T.DEEP:n<.22?T.SAND:seeded(x*71+y*37,s)>.93?T.FLORA:T.GROUND;
   }
-  const sx=Math.floor(COLS/2),sy=Math.floor(ROWS/2);
-  for(let dy=-4;dy<=4;dy++) for(let dx=-4;dx<=4;dx++) tiles[(sy+dy)*COLS+(sx+dx)]=T.GROUND;
+  const cx=Math.floor(COLS/2),cy=Math.floor(ROWS/2);
+  for(let dy=-4;dy<=4;dy++) for(let dx=-4;dx<=4;dx++) tiles[(cy+dy)*COLS+(cx+dx)]=T.GROUND;
   return tiles;
 }
 
-function spawnResources(){
-  const res=[];
+function spawnRes(){
+  const res=[], s=Math.floor(Math.random()*99999);
+  function rng(v){const n=((s+v)*1664525+1013904223)&0xffffffff;return(n>>>16)/65536;}
   const counts=[60,55,60,50,45];
   for(let type=0;type<5;type++){
     let placed=0,att=0;
@@ -143,7 +298,7 @@ function spawnResources(){
       const y=2+Math.floor(rng(att*type*3+placed*13)*(ROWS-4));
       const t=world.tiles[y*COLS+x];
       if((t===T.GROUND||t===T.SAND)&&Math.hypot(x-COLS/2,y-ROWS/2)>5){
-        res.push({x:x*TILE+TILE/2,y:y*TILE+TILE/2,type,amount:3+Math.floor(rng(placed)*6),maxAmount:9,mineProgress:0,id:res.length});
+        res.push({x:x*TILE+TILE/2,y:y*TILE+TILE/2,type,amount:3+Math.floor(rng(att)*6),maxAmount:9,mineProgress:0,id:res.length});
         placed++;
       }
     }
@@ -151,123 +306,290 @@ function spawnResources(){
   return res;
 }
 
-// ─── PLAYER ─────────────────────────────────────────────────────────────────
-function initPlayer(){
+// ════════════════════════════════════════════
+//  PLAYER
+// ════════════════════════════════════════════
+
+function mkPlayer(){
   return{
-    x:WW/2,y:WH/2,vx:0,vy:0,w:20,h:26,
+    x:0,y:0,vx:0,vy:0,w:20,h:14,
     speed:185, health:100,maxHealth:100,
     o2:100,maxO2:100, facing:1,walkAnim:0,
-    inv:new Array(12).fill(0),maxInv:40,
-    miningTarget:null,mineProgress:0,
+    inv:new Array(12).fill(0),
+    miningTarget:null,mineProgress:0, mineSpeedMult:1,
     alive:true,score:0,
-    nearHabitat:false, survivalTime:0,
-    mineSpeedMult:1, o2ConsumptionMult:1,
+    nearHabitat:false,survivalTime:0, attackCooldown:0,
   };
 }
 
-// ─── STRUCTURES ─────────────────────────────────────────────────────────────
-function placeStructure(type,tx,ty,free=false){
-  const sd=STRUCT_DATA[type];
-  if(!free){
-    for(const[k,v]of Object.entries(sd.cost)) player.inv[+k]-=v;
-  }
-  world.structures.push({type,tx,ty,wx:tx*TILE,wy:ty*TILE,w:sd.w*TILE,h:sd.h*TILE,hp:100,id:Math.random()});
+// ════════════════════════════════════════════
+//  STRUCTURES
+// ════════════════════════════════════════════
+
+function placeStruct(type,tx,ty){
+  const sd=STRUCT[type];
+  for(const[k,v]of Object.entries(sd.cst)) player.inv[+k]-=v;
+  world.structures.push({type,tx,ty,wx:tx*TILE,wy:ty*TILE,w:sd.w*TILE,h:sd.h*TILE,hp:100});
   for(let dy=0;dy<sd.h;dy++) for(let dx=0;dx<sd.w;dx++) world.tiles[(ty+dy)*COLS+(tx+dx)]=T.VOID;
-  spawnParticles(tx*TILE+sd.w*TILE/2,ty*TILE+sd.h*TILE/2,STRUCT_DATA[type].color,16);
+  spawnParts(tx*TILE+sd.w*TILE/2,ty*TILE+sd.h*TILE/2,sd.col,16);
 }
 
 function canPlace(type,tx,ty){
-  const sd=STRUCT_DATA[type];
-  if(tx<1||ty<1||tx+sd.w>COLS-1||ty+sd.h>ROWS-1)return false;
+  const sd=STRUCT[type];
+  if(tx<1||ty<1||tx+sd.w>COLS-1||ty+sd.h>ROWS-1) return false;
   for(let dy=0;dy<sd.h;dy++) for(let dx=0;dx<sd.w;dx++){
     const t=world.tiles[(ty+dy)*COLS+(tx+dx)];
-    if(t===T.ROCK||t===T.DEEP||t===T.VOID)return false;
+    if(t===T.ROCK||t===T.DEEP||t===T.VOID) return false;
   }
-  for(const s of world.structures) if(rectOverlap(tx*TILE,ty*TILE,sd.w*TILE,sd.h*TILE,s.wx,s.wy,s.w,s.h))return false;
+  for(const s of world.structures)
+    if(rectOv(tx*TILE,ty*TILE,sd.w*TILE,sd.h*TILE,s.wx,s.wy,s.w,s.h)) return false;
   return true;
 }
 
 function canAfford(type){
-  for(const[k,v]of Object.entries(STRUCT_DATA[type].cost)) if((player.inv[+k]||0)<v)return false;
+  for(const[k,v]of Object.entries(STRUCT[type].cst)) if(player.inv[+k]<v) return false;
   return true;
 }
 
-// ─── ALIENS ─────────────────────────────────────────────────────────────────
-function spawnAlien(x,y,type){
-  return{
-    x,y,vx:0,vy:0,type,
-    speed:[65,95,50][type],
-    health:[35,18,80][type],maxHealth:[35,18,80][type],
-    damage:[20,10,35][type],
-    attackCd:0,state:'roam',roamTarget:null,roamTimer:0,
-    size:[18,12,26][type],
-    color:['#ff0088','#ff6600','#7700ff'][type],
-    id:Math.random(),anim:Math.random()*6.28,dying:false,alpha:1,
-  };
-}
+// ════════════════════════════════════════
+//  PARTICLES
+// ════════════════════════════════════════
 
-function spawnWave(){
-  const isNight=dayCycle>0.48&&dayCycle<0.98;
-  if(!isNight)return;
-  const count=2+Math.floor(gameTime/180);
-  for(let i=0;i<count;i++){
-    const ang=Math.random()*Math.PI*2;
-    const dist=380+Math.random()*180;
-    const ax=player.x+Math.cos(ang)*dist, ay=player.y+Math.sin(ang)*dist;
-    if(ax>TILE&&ax<WW-TILE&&ay>TILE&&ay<WH-TILE)
-      world.aliens.push(spawnAlien(ax,ay,Math.floor(Math.random()*3)));
-  }
-}
-
-// ─── PARTICLES ───────────────────────────────────────────────────────────────
-function spawnParticles(x,y,color,n=6){
+function spawnParts(x,y,col,n=6){
   for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2,s=30+Math.random()*90,life=0.3+Math.random()*0.6;
-    world.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,color,life,maxLife:life,size:2+Math.random()*3});
+    const a=Math.random()*Math.PI*2,spd=30+Math.random()*90;
+    const life=0.3+Math.random()*0.6;
+    world.particles.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,color:col,life,maxLife:life,size:2+Math.random()*3});
   }
 }
 
-// ─── COLLISION ───────────────────────────────────────────────────────────────
+// ════════════════════════════════════════
+//  COLLISION
+// ════════════════════════════════════════
+
 function tileBlocked(x,y,w,h){
   const hw=w/2,hh=h/2;
   const x1=Math.floor((x-hw)/TILE),x2=Math.floor((x+hw-1)/TILE);
   const y1=Math.floor((y-hh)/TILE),y2=Math.floor((y+hh-1)/TILE);
   for(let ty=y1;ty<=y2;ty++) for(let tx=x1;tx<=x2;tx++){
-    if(tx<0||tx>=COLS||ty<0||ty>=ROWS)return true;
+    if(tx<0||tx>=COLS||ty<0||ty>=ROWS) return true;
     const t=world.tiles[ty*COLS+tx];
-    if(t===T.ROCK||t===T.DEEP||t===T.VOID)return true;
+    if(t===T.ROCK||t===T.DEEP||t===T.VOID) return true;
   }
   return false;
 }
 
 function moveEnt(e,dt){
   const nx=e.x+e.vx*dt,ny=e.y+e.vy*dt;
-  if(!tileBlocked(nx,e.y,e.w,e.h))e.x=nx;
-  if(!tileBlocked(e.x,ny,e.w,e.h))e.y=ny;
+  if(!tileBlocked(nx,e.y,e.w,e.h)) e.x=nx;
+  if(!tileBlocked(e.x,ny,e.w,e.h)) e.y=ny;
 }
 
-// ─── UPDATE ──────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════
+//  RESEARCH
+// ════════════════════════════════════════
+
+function canUnlock(res){
+  if(res.unlocked) return 'done';
+  if(res.req && !RESEARCH.find(r=>r.id===res.req)?.unlocked) return 'miss';
+  for(const[k,v]of Object.entries(res.cost)) if((player.inv[+k]||0)<v) return 'miss';
+  return 'ok';
+}
+
+function unlockResearch(res){
+  const st=canUnlock(res);
+  if(st!=='ok') return;
+  for(const[k,v]of Object.entries(res.cost)) player.inv[+k]-=v;
+  res.unlocked=true;
+  if(res.bonus.mineSpd) player.mineSpeedMult=Math.min(player.mineSpeedMult*res.bonus.mineSpd,3);
+  if(res.bonus.maxO2){player.maxO2=res.bonus.maxO2;player.o2=Math.min(player.o2,res.bonus.maxO2);}
+  if(res.bonus.maxHP){player.maxHealth=res.bonus.maxHP;player.health=Math.min(player.health,res.bonus.maxHP);}
+  spawnParts(player.x,player.y,'#9900ff',20);
+}
+
+// ════════════════════════════════════════
+//  PANELS
+// ════════════════════════════════════════
+
+function openPanel(name){
+  closePanelAll();
+  if(name==='build'){buildOpen=true;renderBuildPanel();}
+  else if(name==='inv'){invOpen=true;renderInvPanel();}
+  else if(name==='research'){resOpen=true;renderResPanel();}
+  document.getElementById('panel-'+name).classList.add('open');
+}
+
+function closePanel(name){
+  if(name==='build')buildOpen=false;
+  else if(name==='inv')invOpen=false;
+  else if(name==='research')resOpen=false;
+  document.getElementById('panel-'+name).classList.remove('open');
+}
+
+function closePanelAll(){
+  closePanel('build');closePanel('inv');closePanel('research');
+}
+
+function renderBuildPanel(){
+  const el=document.getElementById('build-grid');
+  let html='';
+  for(let i=0;i<STRUCT.length;i++){
+    const sd=STRUCT[i], afford=canAfford(i);
+    html+=`<div class="build-card${afford?'':' no-afford'}" onclick="tryBuild(${i})">
+      <div class="bname" style="color:${sd.col}">${sd.name}</div>
+      <div class="bdesc">${sd.desc}</div>
+      <div class="bbcost">${Object.entries(sd.cst).map(([k,v])=>`<span>${v}x ${RES[+k].name}</span>`).join(' · ')}</div>
+    </div>`;
+  }
+  el.innerHTML=html;
+}
+
+function renderInvPanel(){
+  const el=document.getElementById('inv-body');
+  const used=player.inv.reduce((a,b)=>a+b,0);
+  let html='<div class="inv-list">';
+  for(let i=0;i<RES.length;i++){
+    if(player.inv[i]<=0) continue;
+    html+=`<div class="inv-row">
+      <div class="inv-dot" style="background:${RES[i].c}"></div>
+      <div class="inv-lbl">${RES[i].name}</div>
+      <div class="inv-val" style="color:${RES[i].c}">${player.inv[i]}</div>
+    </div>`;
+  }
+  if(used===0) html+='<div style="color:#445;text-align:center;padding:20px;font-size:0.8rem">Inventário vazio — mine recursos com [E]</div>';
+  html+=`</div><div class="inv-footer">${used} / ${ } slots · Score: ${player.score}</div>`;
+  el.innerHTML=html;
+}
+
+function renderResPanel(){
+  const el=document.getElementById('res-body');
+  let html='<div class="res-list">';
+  for(const res of RESEARCH){
+    const st=canUnlock(res);
+    const cls=st==='done'?'done':st==='ok'?'ready':'locked';
+    const lbl=st==='done'?'✓ CONCLUÍDO':st==='ok'?'APLICAR':'???';
+    const slbl=st==='done'?'done':st==='ok'?'ready':'miss';
+    const onclick=st==='ok'?`onclick="doResearch('${res.id}')"`:'';
+    html+=`<div class="res-card ${cls}" ${onclick}>
+      <div class="res-icon">R</div>
+      <div class="res-info">
+        <div class="rn">${res.name}</div>
+        <div class="rd">${res.desc}</div>
+        <div class="rc">${Object.entries(res.cost).map(([k,v])=>`<span>${v}x ${RES[+k].name}</span>`).join(' · ')}</div>
+      </div>
+      <div class="res-st ${slbl}">${lbl}</div>
+    </div>`;
+  }
+  html+='</div>';
+  el.innerHTML=html;
+}
+
+function tryBuild(type){
+  if(!canAfford(type)) return;
+  // Exit panel and enter placement mode
+  closePanel('build');
+  buildMode=type;
+}
+
+function doResearch(id){
+  const res=RESEARCH.find(r=>r.id===id);
+  if(!res) return;
+  unlockResearch(res);
+  renderResPanel();
+}
+
+function togglePanel(name){
+  // If the requested panel is already open, close it
+  if(name==='build'&&buildOpen){closePanelAll();return;}
+  if(name==='inv'&&invOpen){closePanelAll();return;}
+  if(name==='research'&&resOpen){closePanelAll();return;}
+  openPanel(name);
+}
+
+function togglePause(){
+  if(!running) return;
+  paused=!paused;
+  document.getElementById('screen-pause').style.display=paused?'flex':'none';
+  if(!paused){lastTime=performance.now();requestAnimationFrame(loop);}
+}
+
+// ══════════════════════════════════════════
+//  INPUT
+// ══════════════════════════════════════════
+
+let mouse={x:0,y:0,wx:0,wy:0};
+
+function setupInput(){
+  window.addEventListener('keydown',e=>{
+    if(!running) return;
+    keys[e.code]=true;
+
+    if(e.code==='Escape'){closePanelAll();buildMode=null;}
+    if(e.code==='KeyP'){togglePause();return;}
+    if(paused) return;
+
+    // Panel toggles (only when no build placement active)
+    if(e.code==='KeyB'&&!buildMode&&!invOpen&&!resOpen) openPanel('build');
+    else if(e.code==='KeyI'&&!buildOpen&&!resOpen) openPanel('inv');
+    else if(e.code==='KeyR'&&!buildOpen&&!invOpen) openPanel('research');
+    // If any panel is open and B is pressed, close all
+    if(e.code==='KeyB'&&(buildOpen||invOpen||resOpen)){closePanelAll();return;}
+    if(e.code==='KeyI'&&!buildOpen){closePanel('inv');return;}
+    if(e.code==='KeyR'&&!researchOpen){closePanel('research');return;}
+
+    if(document.querySelector('.panel-overlay.open')) return; // ignore building while panel is open
+
+    // Build placement — left click handled separately
+  });
+
+  window.addEventListener('keyup',e=>{keys[e.code]=false;});
+
+  canvas.addEventListener('mousemove',e=>{
+    const r=canvas.getBoundingClientRect();
+    mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top;
+    mouse.wx=mouse.x+cam.x; mouse.wy=mouse.y+cam.y;
+  });
+
+  canvas.addEventListener('click',()=>{
+    if(buildMode!==null&&player.alive){
+      const tx=Math.floor(mouse.wx/TILE),ty=Math.floor(mouse.wy/TILE);
+      if(canPlace(buildMode,tx,ty)&&canAfford(buildMode)){
+        placeStruct(buildMode,tx,ty);
+      }
+      buildMode=null;
+    }
+  });
+}
+
+// Fix: research open check
+let researchOpen=false;
+</script>
+
+<script>
+'use strict';
+// ════════════════════════════════════════
+//  UPDATE
+// ══════════════════════════════════════════
+
 function update(dt){
   gameTime+=dt; frame++;
   dayCycle=(gameTime%DAY_PERIOD)/DAY_PERIOD;
-  if(gameTime>nextEventTime&&Math.random()<0.3){spawnWeatherParticles();nextEventTime=gameTime+30;}
-
   updatePlayer(dt);
-  updateAchievements(dt);
   for(const p of world.particles){
     p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.88; p.vy*=0.88; p.life-=dt;
   }
   world.particles=world.particles.filter(p=>p.life>0);
-
-  const tx=player.x-CVW/2, ty2=player.y-CVH/2;
-  cam.x+=(tx-cam.x)*0.08; cam.y+=(ty2-cam.y)*0.08;
+  const tx=player.x-CVW/2,ty2=player.y-CVH/2;
+  cam.x+=(tx-cam.x)*0.08;
+  cam.y+=(ty2-cam.y)*0.08;
   cam.x=Math.max(0,Math.min(WW-CVW,cam.x));
   cam.y=Math.max(0,Math.min(WH-CVH,cam.y));
-  mouse.wx=mouse.x+cam.x; mouse.wy=mouse.y+cam.y;
+  mouse.wx=mouse.x+cam.x;
+  mouse.wy=mouse.y+cam.y;
 }
 
 function updatePlayer(dt){
-  if(!player.alive)return;
+  if(!player.alive) return;
   player.survivalTime+=dt;
   player.attackCooldown=Math.max(0,player.attackCooldown-dt);
 
@@ -279,16 +601,17 @@ function updatePlayer(dt){
 
   if(dx||dy){
     const len=Math.hypot(dx,dy);
-    player.vx=(dx/len)*player.speed; player.vy=(dy/len)*player.speed;
-    if(dx)player.facing=dx>0?1:-1;
-    player.walkAnim+=dt*7;
-  } else { player.vx*=0.75; player.vy*=0.75; }
+    player.vx=(dx/len)*player.speed;
+    player.vy=(dy/len)*player.speed;
+    if(dx) player.facing=dx>0?1:-1;
+    player.walkAnim+=dt*8;
+  } else { player.vx*=0.7; player.vy*=0.7; }
 
   moveEnt(player,dt);
   player.x=Math.max(20,Math.min(WW-20,player.x));
   player.y=Math.max(20,Math.min(WH-20,player.y));
 
-  // O2 zone check
+  // Habitat check
   player.nearHabitat=false;
   for(const s of world.structures){
     if(s.type===0){
@@ -305,7 +628,9 @@ function updatePlayer(dt){
     if(player.o2<=0){player.o2=0;player.health-=12*dt;}
   }
 
-  if(keys['KeyE']&&!buildMode)doMining(dt); else {player.miningTarget=null;player.mineProgress=0;}
+  // Mining
+  if(keys['KeyE']&&!buildMode&&!document.querySelector('.panel-overlay.open')) doMining(dt);
+  else {player.miningTarget=null;player.mineProgress=0;}
 
   if(player.health<=0){
     player.alive=false;
@@ -318,56 +643,31 @@ function updatePlayer(dt){
 }
 
 function doMining(dt){
+  if(!player.alive) return;
   let closest=null,closestDist=75;
   for(const r of world.resources){
-    if(r.amount<=0)continue;
+    if(r.amount<=0) continue;
     const d=Math.hypot(player.x-r.x,player.y-r.y);
     if(d<closestDist){closest=r;closestDist=d;}
   }
   if(!closest){player.miningTarget=null;player.mineProgress=0;return;}
   if(player.miningTarget!==closest){player.miningTarget=closest;player.mineProgress=0;}
   player.mineProgress+=dt/1.4*player.mineSpeedMult;
-  if(frame%5===0)spawnParticles(closest.x,closest.y,RES_DATA[closest.type].color,2);
+  if(frame%5===0) spawnParts(closest.x,closest.y,RESData[closest.type].c,2);
   if(player.mineProgress>=1){
     player.mineProgress=0;
     const total=player.inv.reduce((a,b)=>a+b,0);
     if(total<player.maxInv){
       player.inv[closest.type]++;
       closest.amount--;
-      achievements.miner.current++;
-      spawnParticles(closest.x,closest.y,RES_DATA[closest.type].color,10);
+      spawnParts(closest.x,closest.y,RESData[closest.type].c,10);
     }
   }
 }
 
-function updateAchievements(dt){
-  achievements.survivor1h.current=Math.floor(player.survivalTime);
-  achievements.survivor6h.current=Math.floor(player.survivalTime);
-  achievements.builder.current=world.structures.length;
-}
-
-function playerAttack(){
-  //Player has no combat - F key is now unused
-}
-
-function updateAliens(dt){
-  // No more aliens in this version - removed for survival focus
-}
-
-// ─── RENDER ──────────────────────────────────────────────────────────────────
-function render(){
-  const night=Math.max(0,Math.sin(dayCycle*Math.PI*2-Math.PI)*0.9+0.2);
-  const bg=lerpCol([14,6,28],[4,1,10],Math.min(1,night*1.4));
-  ctx.fillStyle=`rgb(${bg[0]},${bg[1]},${bg[2]})`;
-  ctx.fillRect(0,0,CVW,CVH);
-  if(night>0.1){ctx.fillStyle=`rgba(0,0,12,${night*0.45})`;ctx.fillRect(0,0,CVW,CVH);}
-
-  ctx.save(); ctx.translate(-cam.x,-cam.y);
-  renderTiles(); renderStructures(); renderResources(); renderParticles(); renderPlayer();
-  if(buildMode!==null)renderBuildGhost();
-  ctx.restore();
-  renderHUD();
-}
+// ════════════════════════════════════════
+//  RENDER TILES
+// ════════════════════════════════════════
 
 function renderTiles(){
   const sx=Math.max(0,Math.floor(cam.x/TILE)),sy=Math.max(0,Math.floor(cam.y/TILE));
@@ -386,36 +686,38 @@ function renderTiles(){
 }
 
 function drawGround(px,py,tx,ty){
-  const v=rng(tx*73+ty*41)*0.18;
-  ctx.fillStyle=`rgb(${Math.floor(18+v*28)},${Math.floor(9+v*16)},${Math.floor(32+v*38)})`;
+  const v=rng2d(tx,ty)*0.18;
+  ctx.fillStyle=`rgb(${18+v*28|0},${9+v*16|0},${32+v*38|0})`;
   ctx.fillRect(px,py,TILE,TILE);
   ctx.strokeStyle='rgba(55,25,75,0.25)'; ctx.lineWidth=0.5;
   ctx.strokeRect(px,py,TILE,TILE);
-  if(rng(tx*19+ty*91)>0.82){
-    ctx.fillStyle=`rgba(80,40,110,${rng(tx+ty)*0.4+0.1})`;
-    ctx.beginPath(); ctx.arc(px+rng(tx*31)*TILE,py+rng(ty*37)*TILE,1.5,0,Math.PI*2); ctx.fill();
+  if(rng2d(tx*3,ty)>0.82){
+    ctx.fillStyle=`rgba(80,40,110,${rng2d(tx,ty)*0.4+0.1})`;
+    ctx.beginPath(); ctx.arc(px+rng2d(tx*7,ty)*TILE,py+rng2d(tx,ty*7)*TILE,1.5,0,Math.PI*2); ctx.fill();
   }
 }
+
+function rng2d(a,b){const n=((a*20803+b*19201+17701)&0xffffffff)>>>16;return n/65536;}
 
 function drawRock(px,py,tx,ty,deep){
   ctx.fillStyle=deep?'#07001a':'#110828'; ctx.fillRect(px,py,TILE,TILE);
   ctx.fillStyle=deep?'#0d0030':'#1a0e40';
   const pts=[[8,8],[24,6],[4,22],[26,20],[14,14]];
-  for(const[ox,oy]of pts) if(rng(tx*ox+ty*oy)>0.55) ctx.fillRect(px+ox,py+oy,rng(tx+oy)*10+4,rng(ty+ox)*8+3);
-  if(deep){ctx.strokeStyle='rgba(90,0,180,0.35)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(px+rng(tx)*TILE,py);ctx.lineTo(px+rng(tx+1)*TILE,py+TILE);ctx.stroke();}
+  for(const[ox,oy]of pts) if(rng2d(tx+ox,ty+oy)>0.55) ctx.fillRect(px+ox,py+oy,rng2d(tx,oy)*10+4,rng2d(ty,ox)*8+3);
+  if(deep){ctx.strokeStyle='rgba(90,0,180,0.35)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(px+rng2d(tx,ty)*TILE,py);ctx.lineTo(px+rng2d(tx+1,ty)*TILE,py+TILE);ctx.stroke();}
 }
 
 function drawSand(px,py,tx,ty){
-  const v=rng(tx*23+ty*17)*0.2;
-  ctx.fillStyle=`rgb(${Math.floor(58+v*38)},${Math.floor(28+v*18)},${Math.floor(18+v*12)})`;
+  const v=rng2d(tx*3,ty*7)*0.2;
+  ctx.fillStyle=`rgb(${58+v*38|0},${28+v*18|0},${18+v*12|0})`;
   ctx.fillRect(px,py,TILE,TILE);
 }
 
 function drawFlora(px,py,tx,ty){
   drawGround(px,py,tx,ty);
-  const phase=frame*0.035+rng(tx+ty)*6.28,sw=Math.sin(phase)*2.5;
-  const h=10+rng(tx*7+ty*3)*14;
-  const hue=rng(tx+ty*3)>0.5?'#00ff88':'#ff44aa';
+  const phase=frame*0.035+rng2d(tx,ty)*6.28,sw=Math.sin(phase)*2.5;
+  const h=10+rng2d(tx*7,ty*3)*14;
+  const hue=rng2d(tx+100,ty*3)>0.5?'#00ff88':'#ff44aa';
   ctx.strokeStyle=hue; ctx.lineWidth=2; ctx.shadowColor=hue; ctx.shadowBlur=8;
   ctx.beginPath();
   ctx.moveTo(px+TILE/2,py+TILE-4);
@@ -425,50 +727,58 @@ function drawFlora(px,py,tx,ty){
   ctx.beginPath(); ctx.arc(px+TILE/2+sw*3,py+TILE-h,3.5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
 }
 
+// ════════════════════════════════════════
+//  RENDER RESOURCES
+// ════════════════════════════════════════
+
 function renderResources(){
   for(const r of world.resources){
-    if(r.amount<=0)continue;
+    if(r.amount<=0) continue;
     const scrx=r.x-cam.x,scry=r.y-cam.y;
-    if(scrx<-50||scrx>CVW+50||scry<-50||scry>CVH+50)continue;
-    const d=RES_DATA[r.type],pulse=Math.sin(frame*0.05+r.id)*0.3+0.7,sz=(0.7+(r.amount/r.maxAmount)*0.6)*9;
-    ctx.save(); ctx.shadowColor=d.color; ctx.shadowBlur=14*pulse;
+    if(scrx<-50||scrx>CVW+50||scry<-50||scry>CVH+50) continue;
+    const pd=RESData[r.type],pulse=Math.sin(frame*0.05+r.id)*0.3+0.7,sz=(0.7+(r.amount/r.maxAmount)*0.6)*9;
+    ctx.save(); ctx.shadowColor=pd.c; ctx.shadowBlur=14*pulse;
     for(let i=0;i<r.amount;i++){
-      const ang=(i/r.amount)*Math.PI*2,cx=r.x+Math.cos(ang)*(sz*0.8),cy=r.y+Math.sin(ang)*(sz*0.8);
-      drawCrystal(cx,cy,sz*0.55,d.color,ang+frame*0.015);
+      const ang=(i/r.amount)*Math.PI*2,cx2=r.x+Math.cos(ang)*(sz*0.8),cy2=r.y+Math.sin(ang)*(sz*0.8);
+      drawCrystal(cx2,cy2,sz*0.55,pd.c,ang+frame*0.015);
     }
-    drawCrystal(r.x,r.y,sz,d.color,frame*0.022*(r.type%2?1:-1));
+    drawCrystal(r.x,r.y,sz,pd.c,frame*0.022*(r.type%2?1:-1));
     if(player.miningTarget===r&&player.mineProgress>0){
       const bw=38;
       ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(r.x-bw/2,r.y-24,bw,5);
-      ctx.fillStyle=d.color; ctx.shadowBlur=8;
+      ctx.fillStyle=pd.c; ctx.shadowBlur=8;
       ctx.fillRect(r.x-bw/2,r.y-24,bw*player.mineProgress,5);
     }
     ctx.restore();
   }
 }
 
-function drawCrystal(x,y,s,color,angle){
-  ctx.save(); ctx.translate(x,y); ctx.rotate(angle); ctx.fillStyle=color;
+function drawCrystal(x,y,s,col,angle){
+  ctx.save(); ctx.translate(x,y); ctx.rotate(angle); ctx.fillStyle=col;
   ctx.beginPath(); ctx.moveTo(0,-s*1.5); ctx.lineTo(s*0.48,0); ctx.lineTo(0,s*0.7); ctx.lineTo(-s*0.48,0); ctx.closePath(); ctx.fill();
   ctx.fillStyle='rgba(255,255,255,0.28)';
   ctx.beginPath(); ctx.moveTo(0,-s*1.5); ctx.lineTo(s*0.14,-s*0.25); ctx.lineTo(0,-s*0.15); ctx.closePath(); ctx.fill();
   ctx.restore();
 }
 
+// ════════════════════════════════════════
+//  RENDER STRUCTURES
+// ════════════════════════════════════════
+
 function renderStructures(){
   for(const s of world.structures){
     const rx=s.wx-cam.x,ry=s.wy-cam.y;
-    if(rx+s.w<0||rx>CVW||ry+s.h<0||ry>CVH)continue;
+    if(rx+s.w<0||rx>CVW||ry+s.h<0||ry>CVH) continue;
     ctx.save();
-    if(s.type===0){renderHabitat(s);}
-    else if(s.type===1){renderSolar(s);}
+    if(s.type===0) renderHabitat(s);
+    else if(s.type===1) renderSolar(s);
     else {
-      const d=STRUCT_DATA[s.type];
+      const sd=STRUCT[s.type];
       ctx.fillStyle='#141424'; ctx.fillRect(s.wx+3,s.wy+3,s.w-6,s.h-6);
-      ctx.strokeStyle=d.color; ctx.lineWidth=2; ctx.shadowColor=d.color; ctx.shadowBlur=8;
+      ctx.strokeStyle=sd.col; ctx.lineWidth=2; ctx.shadowColor=sd.col; ctx.shadowBlur=8;
       ctx.strokeRect(s.wx+3,s.wy+3,s.w-6,s.h-6); ctx.shadowBlur=0;
-      ctx.fillStyle=d.color; ctx.font='bold 10px Courier New'; ctx.textAlign='center';
-      ctx.fillText(d.name.toUpperCase(),s.wx+s.w/2,s.wy+s.h/2+4);
+      ctx.fillStyle=sd.col; ctx.font='bold 10px Courier New'; ctx.textAlign='center';
+      ctx.fillText(sd.name.toUpperCase(),s.wx+s.w/2,s.wy+s.h/2+4);
     }
     ctx.restore();
   }
@@ -486,7 +796,6 @@ function renderHabitat(s){
   ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(s.wx+s.w/2,s.wy+s.h/2,170,0,Math.PI*2); ctx.fill();
   ctx.fillStyle='#2277ee'; ctx.shadowColor='#3388ff'; ctx.shadowBlur=10;
   ctx.fillRect(s.wx+6,s.wy+s.h/2-2,s.w-12,4); ctx.shadowBlur=0;
-  // Porthole light
   ctx.fillStyle='#88ccff'; ctx.shadowColor='#88ccff'; ctx.shadowBlur=12;
   ctx.beginPath(); ctx.arc(s.wx+s.w/2,s.wy+s.h/3,6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
 }
@@ -497,164 +806,143 @@ function renderSolar(s){
   const cols=3,rows=2,cw=(s.w-10)/cols,ch=(s.h-8)/rows;
   for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
     const B=Math.floor(brightness*220);
-    ctx.fillStyle=`rgb(${Math.floor(B*0.35)},${Math.floor(B*0.28)},${B})`;
+    ctx.fillStyle=`rgb(${B*0.35|0},${B*0.28|0},${B})`;
     ctx.fillRect(s.wx+5+c*cw,s.wy+4+r*ch,cw-2,ch-2);
   }
   ctx.strokeStyle='#ffee88'; ctx.lineWidth=1; ctx.shadowColor='#ffee88'; ctx.shadowBlur=brightness*10;
   ctx.strokeRect(s.wx+3,s.wy+3,s.w-6,s.h-6); ctx.shadowBlur=0;
 }
 
+// ════════════════════════════════════════
+//  RENDER PLAYER
+// ════════════════════════════════════════
+
 function renderPlayer(){
-  if(!player.alive)return;
+  if(!player.alive) return;
   const leg=Math.sin(player.walkAnim)*5;
   ctx.save(); ctx.translate(player.x,player.y);
   if(player.facing===-1)ctx.scale(-1,1);
   ctx.shadowColor='#88aaff'; ctx.shadowBlur=12;
-  // Jet pack glow
   if(Math.abs(player.vx)+Math.abs(player.vy)>20){
     ctx.fillStyle='rgba(100,150,255,0.3)';
     ctx.beginPath(); ctx.arc(7,5,6,0,Math.PI*2); ctx.fill();
   }
-  // Legs
   ctx.fillStyle='#4a5580'; ctx.fillRect(-8,8,6,10+leg); ctx.fillRect(2,8,6,10-leg);
-  // Body
   ctx.fillStyle='#c8962c'; ctx.fillRect(-9,-8,18,18);
-  // Suit detail
   ctx.fillStyle='#aa7c1e'; ctx.fillRect(-7,-4,6,8); ctx.fillRect(4,-4,6,8);
-  // Backpack
   ctx.fillStyle='#7a7a8c'; ctx.fillRect(7,-7,6,14);
   ctx.fillStyle='#5588cc'; ctx.fillRect(8,-5,4,4);
-  // Helmet
   ctx.fillStyle='#c8962c'; ctx.beginPath(); ctx.arc(0,-12,10,0,Math.PI*2); ctx.fill();
   ctx.fillStyle='#aa7c1e'; ctx.fillRect(-7,-14,14,4);
-  // Visor
   const o2ok=player.o2/player.maxO2>0.3;
   ctx.fillStyle=o2ok?'#22ccee':'#ff3300';
   ctx.shadowColor=o2ok?'#22ccee':'#ff3300'; ctx.shadowBlur=14;
   ctx.beginPath(); ctx.arc(2,-13,6.5,-0.35,Math.PI+0.35); ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.beginPath();
-  ctx.arc(-1,-15,2.5,0,Math.PI*2); ctx.fill();
-  // Arms
+  ctx.fillStyle='rgba(255,255,255,0.3)';
+  ctx.beginPath(); ctx.arc(-1,-15,2.5,0,Math.PI*2); ctx.fill();
   ctx.fillStyle='#b88820'; ctx.shadowBlur=0;
   const sw=Math.sin(player.walkAnim+Math.PI)*5;
   ctx.fillRect(-15,-5+sw,7,13); ctx.fillRect(8,-5-sw,7,13);
   ctx.restore();
 }
 
-function renderAliens(){
-  // Aliens removed from game
-}
+// ════════════════════════════════════════
+//  RENDER PARTICLES
+// ════════════════════════════════════════
 
-function renderParticles(){
+function renderParts(){
   for(const p of world.particles){
     const t=p.life/p.maxLife;
     ctx.save(); ctx.globalAlpha=t; ctx.fillStyle=p.color;
     ctx.shadowColor=p.color; ctx.shadowBlur=7;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*t,0,Math.PI*2); ctx.fill(); ctx.restore();
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*t,0,Math.PI*2); ctx.fill();
+    ctx.restore();
   }
 }
+
+// ════════════════════════════════════════
+//  RENDER BUILD GHOST (placement mode)
+// ══════════════════════════════════════════
 
 function renderBuildGhost(){
   const tx=Math.floor(mouse.wx/TILE),ty=Math.floor(mouse.wy/TILE);
   const valid=canPlace(buildMode,tx,ty)&&canAfford(buildMode);
-  const sd=STRUCT_DATA[buildMode];
+  const sd=STRUCT[buildMode];
   ctx.save(); ctx.globalAlpha=0.52;
-  ctx.fillStyle=valid?sd.color+'44':'#ff000033';
-  ctx.strokeStyle=valid?sd.color:'#ff4444'; ctx.lineWidth=2;
+  ctx.fillStyle=valid?sd.col+'44':'#ff000033';
+  ctx.strokeStyle=valid?sd.col:'#ff4444'; ctx.lineWidth=2;
   ctx.fillRect(tx*TILE,ty*TILE,sd.w*TILE,sd.h*TILE);
   ctx.strokeRect(tx*TILE,ty*TILE,sd.w*TILE,sd.h*TILE);
   ctx.restore();
 }
 
-// ─── HUD ─────────────────────────────────────────────────────────────────────
+// ════════════════════════════════════════
+//  HUD
+// ════════════════════════════════════════
+
 function renderHUD(){
   // Top bar
   ctx.fillStyle='rgba(2,0,10,0.78)'; ctx.fillRect(0,0,CVW,52);
 
-  bar(18,13,190,16,player.o2/player.maxO2,'#0088cc','#00ccff','O²');
-  bar(225,13,190,16,player.health/player.maxHealth,'#880022','#ff2244','HP');
+  // O2 + HP bars
+  bar(18,13,200,16,player.o2/player.maxO2,'#0088cc','#00ccff','O²');
+  bar(235,13,200,16,player.health/player.maxHealth,'#880022','#ff2244','HP');
 
-  // Day indicator
+  // Day/night orb
   const dn=dayCycle<0.5;
   ctx.save(); ctx.shadowColor=dn?'#ffdd44':'#6677ff'; ctx.shadowBlur=14;
   ctx.fillStyle=dn?'#ffdd44':'#8899ff';
   ctx.beginPath(); ctx.arc(CVW/2+Math.cos(dayCycle*Math.PI*2-Math.PI/2)*15,26+Math.sin(dayCycle*Math.PI*2-Math.PI/2)*8,dn?6:4.5,0,Math.PI*2); ctx.fill();
   ctx.restore(); ctx.fillStyle='#404060'; ctx.font='9px Courier New'; ctx.textAlign='center';
   ctx.fillText(dn?'DIA':'NOITE',CVW/2,46);
-  // Clock arc
   ctx.strokeStyle='rgba(60,60,100,0.4)'; ctx.lineWidth=1.5;
   ctx.beginPath(); ctx.arc(CVW/2,26,16,0,Math.PI*2); ctx.stroke();
 
-  // Inventory (top right)
-  let rx=CVW-12;
-  for(let i=4;i>=0;i--){
-    if(player.inv[i]<=0)continue;
-    const d=RES_DATA[i];
-    ctx.fillStyle=d.color; ctx.shadowColor=d.color; ctx.shadowBlur=7;
-    ctx.font='bold 11px Courier New'; ctx.textAlign='right';
-    ctx.fillText(`${d.name.slice(0,3).toUpperCase()}:${player.inv[i]}`,rx,19);
-    ctx.shadowBlur=0; rx-=82;
-  }
-
-  // Score + kills
+  // Right side — time + score
   ctx.fillStyle='#303050'; ctx.font='10px Courier New'; ctx.textAlign='right';
-  ctx.fillText(`${Math.floor(player.survivalTime)}s · Score ${player.score}`,CVW-12,46);
+  ctx.fillText(`${Math.floor(player.survivalTime)}s`,CVW-12,19);
+  ctx.fillText(`Score: ${player.score}`,CVW-12,34);
+  ctx.fillText(`Res: ${player.inv.reduce((a,b)=>a+b,0)}`,CVW-12,46);
 
-  // Bottom bar / build buttons
+  // ─── BOTTOM BAR ───
+
+  ctx.fillStyle='rgba(2,0,10,0.78)'; ctx.fillRect(0,CVH-32,CVW,32);
+  ctx.strokeStyle='#14142a'; ctx.lineWidth=1;
+  ctx.strokeRect(0,CVH-32,CVW-1,31);
+
+  ctx.fillStyle='#303050'; ctx.font='10px Courier New'; ctx.textAlign='center';
+  ctx.fillText('[ B ] Construir  ·  [ I ] Inventário  ·  [ R ] Pesquisa  ·  [ E ] Minerar',CVW/2,CVH-11);
+
+  // Build placement mode hint
   if(buildMode!==null){
-    ctx.fillStyle='rgba(2,0,10,0.88)'; ctx.fillRect(0,CVH-54,CVW,54);
-    ctx.strokeStyle='#334499'; ctx.lineWidth=1; ctx.strokeRect(0,CVH-54,CVW,54);
-    const sd=STRUCT_DATA[buildMode];
-    ctx.fillStyle=sd.color; ctx.shadowColor=sd.color; ctx.shadowBlur=10;
-    ctx.font='bold 12px Courier New'; ctx.textAlign='center';
-    ctx.fillText(`CONSTRUINDO: ${sd.name.toUpperCase()} — CLIQUE PARA COLOCAR  |  ESC CANCELAR`,CVW/2,CVH-30);
+    const sd=STRUCT[buildMode];
+    ctx.fillStyle='rgba(2,0,10,0.92)'; ctx.fillRect(0,52,CVW,36);
+    ctx.strokeStyle='#334499'; ctx.lineWidth=1; ctx.strokeRect(0,54,CVW-1,33);
+    ctx.fillStyle=sd.col; ctx.shadowColor=sd.col; ctx.shadowBlur=10;
+    ctx.font='bold 11px Courier New'; ctx.textAlign='center';
+    const costTxt=Object.entries(sd.cst).map(([k,v])=>`${v} ${RES[+k].name}`).join(' + ');
+    ctx.fillText(`${sd.name.toUpperCase()} — CLIQUE PARA POSICIONAR  |  ESC CANCELAR  |  Custo: ${costTxt}`,CVW/2,75);
     ctx.shadowBlur=0;
-    // Cost display
-    let cx=CVW/2-Object.keys(sd.cost).length*55;
-    ctx.fillStyle='#404060'; ctx.font='10px Courier New';
-    ctx.fillText('Custo: '+Object.entries(sd.cost).map(([k,v])=>`${v} ${RES_DATA[+k].name}`).join(' + '),CVW/2,CVH-12);
-  } else {
-    ctx.fillStyle='rgba(2,0,10,0.78)'; ctx.fillRect(0,CVH-46,CVW,46);
-    STRUCT_DATA.forEach((sd,i)=>{
-      const bx=14+i*150,afford=canAfford(i);
-      ctx.strokeStyle=afford?sd.color:'#252535'; ctx.lineWidth=1;
-      ctx.fillStyle=afford?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.3)';
-      ctx.fillRect(bx,CVH-40,140,34); ctx.strokeRect(bx,CVH-40,140,34);
-      ctx.fillStyle=afford?sd.color:'#303050'; ctx.font='11px Courier New'; ctx.textAlign='left';
-      ctx.fillText(`[${i+1}] ${sd.name}`,bx+8,CVH-20);
-      ctx.fillStyle=afford?'#606080':'#252540'; ctx.font='9px Courier New';
-      ctx.fillText(sd.desc,bx+8,CVH-9);
-    });
-    ctx.fillStyle='#252540'; ctx.font='10px Courier New'; ctx.textAlign='right';
-    ctx.fillText('E MINERAR  F ATACAR  1-4 CONSTRUIR',CVW-12,CVH-10);
   }
 
   // Mining hint
-  const closeR=world.resources.find(r=>r.amount>0&&Math.hypot(player.x-r.x,player.y-r.y)<75);
+  const closeR=world.resources?world.resources.find(r=>r.amount>0&&Math.hypot(player.x-r.x,player.y-r.y)<75):null;
   if(closeR&&!buildMode){
-    const d=RES_DATA[closeR.type];
-    ctx.fillStyle=d.color; ctx.shadowColor=d.color; ctx.shadowBlur=12;
-    ctx.font='12px Courier New'; ctx.textAlign='center';
-    ctx.fillText(`[ E ] Minerar ${d.name} (×${closeR.amount})`,CVW/2,CVH-58); ctx.shadowBlur=0;
+    const rd=RESData[closeR.type];
+    ctx.fillStyle=rd.c; ctx.shadowColor=rd.c; ctx.shadowBlur=12;
+    ctx.font='11px Courier New'; ctx.textAlign='center';
+    ctx.fillText(`[ E ] Minerar ${rd.name} (×${closeR.amount})`,CVW/2,CVH-46);
+    ctx.shadowBlur=0;
   }
 
-  // Night warning
-  const trans=Math.min(1,(Math.abs(dayCycle-0.5)*DAY_PERIOD<8||dayCycle*DAY_PERIOD<8)?1:0);
-  if(trans>0){
-    const msg=dayCycle>0.4&&dayCycle<0.6?'⚠  NOITE — ALIENÍGENAS ATIVOS':'☀  AMANHECER';
-    ctx.fillStyle=dayCycle>0.4?'#ff5533':'#ffcc33';
-    ctx.shadowColor=ctx.fillStyle; ctx.shadowBlur=18;
-    ctx.font='bold 15px Courier New'; ctx.textAlign='center';
-    ctx.fillText(msg,CVW/2,CVH/2-50); ctx.shadowBlur=0;
-  }
-
-  // Low O2
-  if(player.o2<20){
+  // Low O2 warning
+  if(player.o2<20&&player.alive){
     if(Math.sin(frame*0.22)>0){
-      ctx.fillStyle='rgba(255,40,0,0.13)'; ctx.fillRect(0,0,CVW,CVH);
+      ctx.fillStyle='rgba(255,40,0,0.12)'; ctx.fillRect(0,0,CVW,CVH);
       ctx.fillStyle='#ff3300'; ctx.shadowColor='#ff3300'; ctx.shadowBlur=22;
-      ctx.font='bold 15px Courier New'; ctx.textAlign='center';
-      ctx.fillText('⚠  OXIGÊNIO CRÍTICO — RETORNE AO HABITAT',CVW/2,CVH/2); ctx.shadowBlur=0;
+      ctx.font='bold 14px Courier New'; ctx.textAlign='center';
+      ctx.fillText('⚠  OXIGÊNIO CRÍTICO — RETORNE AO HABITAT',CVW/2,CVH/2-30);
+      ctx.shadowBlur=0;
     }
   }
 
@@ -673,140 +961,53 @@ function bar(x,y,w,h,pct,bgc,fgc,label){
 }
 
 function renderMinimap(){
-  const mmx=CVW-108,mmy=54,mmw=100,mmh=80;
-  ctx.fillStyle='rgba(0,0,12,0.8)'; ctx.fillRect(mmx,mmy,mmw,mmh);
+  const mmx=CVW-96,mmy=58,mmw=86,mmh=64;
+  ctx.fillStyle='rgba(0,0,12,0.85)'; ctx.fillRect(mmx,mmy,mmw,mmh);
   ctx.strokeStyle='#223355'; ctx.lineWidth=1; ctx.strokeRect(mmx,mmy,mmw,mmh);
 
-  const sx=mmw/COLS,sy=mmh/ROWS;
+  const sc=mmw/Math.max(COLS,Math.ceil(WW/TILE));
+  // Resources (small dots)
+  if(world.resources) for(const r of world.resources){
+    if(r.amount<=0) continue;
+    const rx=mmx+(r.x/TILE)*sc,ry=mmy+(r.y/(TILE*ROWS/COLS))*sc*COLS/ROWS;
+    ctx.fillStyle=RESData[r.type].c+'88';
+    ctx.fillRect(rx,ry,1.2,1.2);
+  }
+  // Structures
+  if(world.structures) for(const s of world.structures){
+    ctx.fillStyle=STRUCTData[s.type].col;
+    ctx.fillRect(mmx+s.tx*sc,mmy+s.ty*sc*Math.min(mmh/ROWS,mmw/COLS)/sc,s.w/TILE*sc+1,s.h/TILE*sc+1);
+  }
+  // Player
+  if(player.alive){
+    const px=mmx+(player.x/TILE)*sc,py=mmy+(player.y/TILE)*sc*ROWS/COLS*(mmw/mmh);
+    ctx.fillStyle='#ffffff'; ctx.shadowColor='#ffffff'; ctx.shadowBlur=5;
+    ctx.beginPath(); ctx.arc(px,py,2,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  }
+}
+
+// Simple minimap: uniform scale
+function renderMinimap(){
+  const mmx=CVW-100,mmy=56,mmw=92,mmh=68;
+  const sc=mmw/COLS,sh=mmh/ROWS;
+  ctx.fillStyle='rgba(0,0,12,0.85)'; ctx.fillRect(mmx,mmy,mmw,mmh);
+  ctx.strokeStyle='#223355'; ctx.lineWidth=1; ctx.strokeRect(mmx,mmy,mmw,mmh);
+
   // Resources
   for(const r of world.resources){
-    if(r.amount<=0)continue;
-    const rx=mmx+(r.x/TILE)*sx,ry=mmy+(r.y/TILE)*sy;
-    ctx.fillStyle=RES_DATA[r.type].color+'88';
-    ctx.fillRect(rx,ry,1.5,1.5);
+    if(r.amount<=0) continue;
+    const rx=mmx+(r.x/TILE)*sc,ry=mmy+(r.y/TILE)*sh;
+    ctx.fillStyle=RESData[r.type].c+'88';
+    ctx.fillRect(rx,ry,1.2,1.2);
   }
   // Structures
   for(const s of world.structures){
-    ctx.fillStyle=STRUCT_DATA[s.type].color;
-    ctx.fillRect(mmx+s.tx*sx,mmy+s.ty*sy,s.w/TILE*sx+1,s.h/TILE*sy+1);
-  }
-  // Aliens
-  for(const a of world.aliens){
-    if(a.dying)continue;
-    ctx.fillStyle=a.color;
-    ctx.fillRect(mmx+(a.x/TILE)*sx,mmy+(a.y/TILE)*sy,2,2);
+    ctx.fillStyle=STRUCTData[s.type].col;
+    ctx.fillRect(mmx+s.tx*sc,mmy+s.ty*sh,s.w/TILE*sc+1,s.h/TILE*sh+1);
   }
   // Player
-  const px=mmx+(player.x/TILE)*sx,py=mmy+(player.y/TILE)*sy;
-  ctx.fillStyle='#ffffff'; ctx.shadowColor='#ffffff'; ctx.shadowBlur=6;
-  ctx.beginPath(); ctx.arc(px,py,2.5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+  const px=mmx+(player.x/TILE)*sc,py=mmy+(player.y/TILE)*sh;
+  ctx.fillStyle='#ffffff'; ctx.shadowColor='#ffffff'; ctx.shadowBlur=5;
+  ctx.beginPath(); ctx.arc(Math.min(mmx+mmw-2,Math.max(mmx+2,px)),Math.min(mmy+mmh-2,Math.max(mmy+2,py)),2,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
 }
-
-// ─── INPUT ───────────────────────────────────────────────────────────────────
-function setupInput(){
-  window.addEventListener('keydown',e=>{
-    keys[e.code]=true;
-    if(e.code==='Escape')buildMode=null;
-    if(e.code==='KeyP'&&running){ paused=!paused; document.getElementById('screen-pause').style.display=paused?'flex':'none'; }
-    if(!buildMode){
-      const m={'Digit1':0,'Digit2':1,'Digit3':2,'Digit4':3};
-      if(m[e.code]!==undefined&&canAfford(m[e.code])){buildMode=m[e.code];e.preventDefault();}
-    }
-    if(e.code==='KeyF'&&player.alive)playerAttack();
-  });
-  window.addEventListener('keyup',e=>{keys[e.code]=false;});
-  canvas.addEventListener('mousemove',e=>{
-    const r=canvas.getBoundingClientRect();
-    mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top;
-    mouse.wx=mouse.x+cam.x; mouse.wy=mouse.y+cam.y;
-  });
-  canvas.addEventListener('click',()=>{
-    if(buildMode!==null&&player.alive){
-      const tx=Math.floor(mouse.wx/TILE),ty=Math.floor(mouse.wy/TILE);
-      if(canPlace(buildMode,tx,ty)&&canAfford(buildMode))placeStructure(buildMode,tx,ty);
-      else if(!canAfford(buildMode)){
-        // flash message
-      }
-      buildMode=null;
-    }
-  });
-}
-
-// ─── TECH TREE & ACHIEVEMENTS ──────────────────────────────────────────────
-function initTechTree(){
-  techTree={
-    mineSpeedup1:{name:'Broca Mel',cost:{7:2},bonus:{mineSpeedMult:1.3},unlocked:false},
-    mineSpeedup2:{name:'Broca Avançada',cost:{7:4,10:3},bonus:{mineSpeedMult:1.6},requires:['mineSpeedup1'],unlocked:false},
-    o2Extender1:{name:'Tanque O2 Port',cost:{7:3,2:4},bonus:{maxO2:150},unlocked:false},
-    o2Extender2:{name:'Suit Osmótica',cost:{7:6,11:4},bonus:{maxO2:200,o2ConsumptionMult:0.7},requires:['o2Extender1'],unlocked:false},
-  };
-}
-
-function initAchievements(){
-  achievements={
-    survivor1h:{name:'Sobrevivente',desc:'1h no planeta',target:3600,current:0,unlocked:false},
-    survivor6h:{name:'Veterano',desc:'6h no planeta',target:21600,current:0,unlocked:false},
-    miner:{name:'Minerador',desc:'500 recursos',target:500,current:0,unlocked:false},
-    builder:{name:'Construtor',desc:'20 estruturas',target:20,current:0,unlocked:false},
-  };
-}
-
-function spawnWeatherParticles(){
-  if(!eventType)return;
-  const count=eventType==='acidRain'?8:eventType==='meteor'?5:eventType==='aurora'?12:4;
-  const color=eventType==='acidRain'?'#00ff00':eventType==='meteor'?'#ffaa00':eventType==='aurora'?'#00ffff':'#888888';
-  for(let i=0;i<count;i++){
-    const x=player.x+Math.random()*400-200;
-    const y=player.y+Math.random()*400-200;
-    spawnParticles(x,y,color,2);
-  }
-  if(eventType==='acidRain'&&player.nearHabitat===false){
-    player.health-=5*0.016;
-  }
-}
-
-// ─── GAME FLOW ───────────────────────────────────────────────────────────────
-function startGame(){
-  document.getElementById('screen-title').style.display='none';
-  document.getElementById('screen-gameover').style.display='none';
-  initTechTree();
-  initAchievements();
-  world.tiles=generateWorld();
-  world.resources=spawnResources();
-  world.structures=[]; world.particles=[]; world.aliens=[];
-  player=initPlayer();
-  const sx=Math.floor(COLS/2)-1,sy=Math.floor(ROWS/2)-1;
-  placeStructure(0,sx,sy,true); // free habitat at start
-  // Spawn the player just outside the habitat so movement is never blocked at start.
-  player.x=(sx+1)*TILE+TILE/2;
-  player.y=(sy+2)*TILE+TILE/2;
-  cam.x=player.x-CVW/2; cam.y=player.y-CVH/2;
-  gameTime=0; dayCycle=0.1; frame=0; buildMode=null;
-  running=true; lastTime=performance.now();
-  requestAnimationFrame(loop);
-}
-
-function showTitle(){
-  running=false;
-  document.getElementById('screen-gameover').style.display='none';
-  document.getElementById('screen-title').style.display='flex';
-}
-
-function loop(ts){
-  if(!running)return;
-  const dt=Math.min((ts-lastTime)/1000,0.05); lastTime=ts;
-  update(dt); render();
-  requestAnimationFrame(loop);
-}
-
-// ─── BOOT ────────────────────────────────────────────────────────────────────
-canvas=document.getElementById('c');
-canvas.width=CVW; canvas.height=CVH;
-ctx=canvas.getContext('2d');
-setupInput();
-</script>
-</body>
-</html>
-
-
-
