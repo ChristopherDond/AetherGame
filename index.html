@@ -4,301 +4,183 @@
 <meta charset="UTF-8">
 <title>AETHER — Sobrevivência Alienígena</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body {
-  background:#030008; display:flex; align-items:center;
-  justify-content:center; height:100vh; overflow:hidden; user-select:none;
-  font-family:'Courier New',monospace;
-}
-canvas { display:block; cursor:crosshair; }
-.screen {
-  position:fixed; inset:0; display:none; flex-direction:column;
-  align-items:center; justify-content:center;
-  background:rgba(3,0,8,0.97); z-index:100;
-}
-.screen h1 {
-  font-size:clamp(2rem,5vw,3.5rem); letter-spacing:0.4em;
-  color:#00e5ff; text-shadow:0 0 20px #00e5ff,0 0 60px #00e5ff55;
-  margin-bottom:0.3em;
-}
-.screen p { color:#505070; font-size:0.85rem; letter-spacing:0.15em; margin-bottom:2.5em; text-align:center; line-height:1.9; }
-.btn {
-  font-family:'Courier New',monospace; font-size:0.95rem; color:#00e5ff;
-  background:transparent; border:1px solid #00e5ff44; padding:0.7em 2.5em;
-  cursor:pointer; letter-spacing:0.2em; transition:all 0.2s; margin:0.3em;
-}
-.btn:hover { background:#00e5ff18; border-color:#00e5ff; box-shadow:0 0 20px #00e5ff33; }
-.btn.red { color:#ff4455; border-color:#ff445544; }
-.btn.red:hover { background:#ff445518; border-color:#ff4455; }
-#death-reason { color:#ff6677 !important; }
-#screen-pause h1 { color:#8888cc !important; text-shadow:0 0 20px #8888cc !important; font-size:2rem !important; }
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#030008;display:flex;align-items:center;justify-content:center;height:100vh;overflow:hidden;user-select:none;font-family:'Courier New',monospace}
+canvas{display:block;cursor:crosshair}
+.screen{position:fixed;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;background:rgba(3,0,8,0.97);z-index:100}
+.screen h1{font-size:clamp(2rem,5vw,3.5rem);letter-spacing:0.4em;color:#00e5ff;text-shadow:0 0 20px #00e5ff,0 0 60px #00e5ff55;margin-bottom:0.3em}
+.screen p{color:#505070;font-size:0.85rem;letter-spacing:0.15em;margin-bottom:2.5em;text-align:center;line-height:1.9}
+.btn{font-family:'Courier New',monospace;font-size:0.95rem;color:#00e5ff;background:transparent;border:1px solid #00e5ff44;padding:0.7em 2.5em;cursor:pointer;letter-spacing:0.2em;transition:all 0.2s;margin:0.3em}
+.btn:hover{background:#00e5ff18;border-color:#00e5ff;box-shadow:0 0 20px #00e5ff33}
+.btn.red{color:#ff4455;border-color:#ff445544}
+.btn.red:hover{background:#ff445518;border-color:#ff4455}
+#death-reason{color:#ff6677!important}
+#screen-pause h1{color:#8888cc!important;text-shadow:0 0 20px #8888cc!important;font-size:2rem!important}
 
-/* ─── PANELS ────────────────────────────────────────────────── */
-.panel-overlay {
-  position:fixed; inset:0; z-index:50; display:none;
-  align-items:center; justify-content:center;
-}
-.panel-overlay.open { display:flex; }
-.panel-overlay .backdrop { position:absolute; inset:0; background:rgba(0,0,10,0.7); }
+/* ─── PANELS ─────────────────────────────────── */
+.pov{position:fixed;inset:0;z-index:50;display:none;align-items:center;justify-content:center}
+.pov.open{display:flex}
+.pov .bd{position:absolute;inset:0;background:rgba(0,0,10,0.7)}
+.pnl{position:relative;z-index:1;background:#0a0a18;border:1px solid #223355;min-width:500px;max-width:720px;max-height:85vh;border-radius:3px;display:flex;flex-direction:column;box-shadow:0 0 60px rgba(0,40,120,0.15)}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:10px 18px;border-bottom:1px solid #181830;flex-shrink:0}
+.ph h2{font-size:0.85rem;color:#00bbdd;letter-spacing:0.25em;font-weight:normal}
+.pc{background:none;border:none;color:#445;font-size:1.1rem;cursor:pointer;padding:2px 10px;font-family:'Courier New',monospace}
+.pc:hover{color:#f55}
+.pb{padding:14px 16px;overflow-y:auto;flex:1}
+.pb::-webkit-scrollbar{width:5px}.pb::-webkit-scrollbar-track{background:#06060e}.pb::-webkit-scrollbar-thumb{background:#1a1a35;border-radius:3px}
 
-.panel {
-  position:relative; z-index:1; background:#0a0a18;
-  border:1px solid #223355; min-width:520px; max-width:740px;
-  max-height:85vh; border-radius:3px; display:flex; flex-direction:column;
-  box-shadow:0 0 60px rgba(0,40,120,0.15);
-}
-.panel-header {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:10px 18px; border-bottom:1px solid #181830;
-  flex-shrink:0;
-}
-.panel-header h2 {
-  font-size:0.85rem; color:#00bbdd; letter-spacing:0.25em; font-weight:normal;
-}
-.panel-close {
-  background:none; border:none; color:#445; font-size:1.1rem;
-  cursor:pointer; padding:2px 10px; font-family:'Courier New',monospace;
-}
-.panel-close:hover { color:#f55; }
-.panel-body { padding:14px 16px; overflow-y:auto; flex:1; }
-
-/* Build grid */
-.build-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr)); gap:8px; }
-.build-card {
-  background:#0c0c1a; border:1px solid #1a1a35; padding:11px 12px;
-  border-radius:2px; cursor:pointer; transition:all 0.12s;
-}
-.build-card:hover { border-color:#446; background:#14142e; }
-.build-card.no-afford { opacity:0.35; cursor:default; }
-.build-card.no-afford:hover { border-color:#1a1a35; background:#0c0c1a; }
-.bname { font-size:0.82rem; font-weight:bold; margin-bottom:3px; }
-.bdesc { font-size:0.68rem; color:#444860; margin-bottom:7px; }
-.bbcost { font-size:0.65rem; color:#446; }
-.bbcost span { color:#778; }
+/* Build */
+.bg{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
+.bc{background:#0c0c1a;border:1px solid #1a1a35;padding:11px 12px;border-radius:2px;cursor:pointer;transition:all 0.12s}
+.bc:hover{border-color:#446;background:#14142e}
+.bc.na{opacity:0.35;cursor:default}.bc.na:hover{border-color:#1a1a35;background:#0c0c1a}
+.bcn{font-size:0.82rem;font-weight:bold;margin-bottom:3px}
+.bcd{font-size:0.68rem;color:#444860;margin-bottom:7px}
+.bcc{font-size:0.65rem;color:#446}.bcc span{color:#778}
 
 /* Inventory */
-.inv-list { display:flex; flex-direction:column; gap:6px; }
-.inv-row {
-  display:flex; align-items:center; gap:10px;
-  padding:5px 8px; background:#0a0a18; border-top:1px solid #14142a;
-}
-.inv-dot { width:12px; height:12px; border-radius:2px; flex-shrink:0; }
-.inv-lbl { font-size:0.75rem; color:#667; flex:1; }
-.inv-val { font-size:0.82rem; font-weight:bold; }
-.inv-footer {
-  margin-top:12px; padding-top:8px; border-top:1px solid #14142a;
-  font-size:0.72rem; color:#445; text-align:center;
-}
+.il{display:flex;flex-direction:column;gap:6px}
+.ir{display:flex;align-items:center;gap:10px;padding:5px 8px;background:#0a0a18;border-top:1px solid #14142a}
+.idot{width:12px;height:12px;border-radius:2px;flex-shrink:0}
+.ilb{font-size:0.75rem;color:#667;flex:1}
+.iv{font-size:0.82rem;font-weight:bold}
+.ifr{margin-top:12px;padding-top:8px;border-top:1px solid #14142a;font-size:0.72rem;color:#445;text-align:center}
 
 /* Research */
-.res-list { display:flex; flex-direction:column; gap:8px; }
-.res-card {
-  background:#0c0c1a; border:1px solid #1a1a35; padding:10px 14px;
-  display:flex; align-items:center; gap:12px; border-radius:2px; transition:all 0.12s;
-}
-.res-card.done { border-color:#2a4a2a; background:#0a140a; }
-.res-card.ready { cursor:pointer; }
-.res-card.ready:hover { border-color:#4a7a4a; background:#0e1e0e; }
-.res-card.locked { opacity:0.35; }
-.res-icon {
-  width:34px; height:34px; border:1px solid #223; border-radius:3px;
-  display:flex; align-items:center; justify-content:center;
-  font-size:0.65rem; color:#556; flex-shrink:0; background:#0a0a14;
-}
-.res-info { flex:1; }
-.res-info .rn { font-size:0.8rem; color:#7788aa; margin-bottom:2px; }
-.res-info .rd { font-size:0.67rem; color:#445; }
-.res-info .rc { font-size:0.65rem; color:#446; margin-top:3px; }
-.res-info .rc span { color:#778; }
-.res-st { font-size:0.65rem; padding:3px 8px; border:1px solid; border-radius:2px; flex-shrink:0; }
-.res-st.done { color:#3a3; border-color:#3a3; }
-.res-st.miss { color:#556; border-color:#333; }
-.res-st.ok { color:#cc0; border-color:#cc0; }
-
-/* Scrollbar */
-.panel-body::-webkit-scrollbar { width:5px; }
-.panel-body::-webkit-scrollbar-track { background:#06060e; }
-.panel-body::-webkit-scrollbar-thumb { background:#1a1a35; border-radius:3px; }
+.rl{display:flex;flex-direction:column;gap:8px}
+.rr{background:#0c0c1a;border:1px solid #1a1a35;padding:10px 14px;display:flex;align-items:center;gap:12px;border-radius:2px;transition:all 0.12s}
+.rr.done{border-color:#2a4a2a;background:#0a140a}
+.rr.ready{cursor:pointer}.rr.ready:hover{border-color:#4a7a4a;background:#0e1e0e}
+.rr.locked{opacity:0.35}
+.ric{width:34px;height:34px;border:1px solid #223;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:#556;flex-shrink:0;background:#0a0a14}
+.ri{flex:1}
+.rn{font-size:0.8rem;color:#7788aa;margin-bottom:2px}
+.rd{font-size:0.67rem;color:#445}
+.rc{font-size:0.65rem;color:#446;margin-top:3px}.rc span{color:#778}
+.rs{font-size:0.65rem;padding:3px 8px;border:1px solid;border-radius:2px;flex-shrink:0}
+.rs.done{color:#3a3;border-color:#3a3}
+.rs.miss{color:#556;border-color:#333}
+.rs.ok{color:#cc0;border-color:#cc0}
 </style>
 </head>
 <body>
 
-<!-- ─── TITLE ─── -->
-<div id="screen-title" class="screen" style="display:flex">
+<div id="s-title" class="screen" style="display:flex">
   <h1>AETHER</h1>
-  <p>
-    Sua nave caiu num planeta alienígena desconhecido.<br>
-    Minere recursos · Construa sua base · Sobreviva.<br><br>
-    <span style="color:#303050">
-      WASD/SETAS — MOVER &nbsp;|&nbsp; E — MINERAR &nbsp;|&nbsp; B — CONSTRUIR<br>
-      I — INVENTÁRIO &nbsp;|&nbsp; R — PESQUISA &nbsp;|&nbsp; P — PAUSA
-    </span>
-  </p>
+  <p>Sua nave caiu num planeta aliengena desconhecido.<br>Minere recursos · Construa sua base · Sobreviva.<br><br><span style="color:#303050">WASD/SETAS — MOVER | E — MINERAR | B — CONSTRUIR | I — INVENTÁRIO | R — PESQUISA | P — PAUSA</span></p>
   <button class="btn" onclick="startGame()">▶ INICIAR MISSÃO</button>
 </div>
 
-<!-- ─── GAME OVER ─── -->
-<div id="screen-gameover" class="screen">
+<div id="s-over" class="screen">
   <h1 style="color:#ff4455;text-shadow:0 0 20px #ff4455,0 0 60px #ff445544">MISSÃO FALHOU</h1>
   <p id="death-reason">O astronauta não sobreviveu.</p>
   <button class="btn red" onclick="startGame()">↺ TENTAR NOVAMENTE</button>
   <button class="btn" onclick="showTitle()">← MENU</button>
 </div>
 
-<!-- ─── PAUSE ─── -->
-<div id="screen-pause" class="screen">
+<div id="s-pause" class="screen">
   <h1>PAUSADO</h1>
   <p>Pressione <span style="color:#888">P</span> para continuar</p>
   <button class="btn" onclick="togglePause()">▶ CONTINUAR</button>
-  <button class="btn red" onclick="showTitle()">↺ SAIR</button>
+  <button class="btn red" onclick="showTitle();paused=false;">↺ SAIR</button>
 </div>
 
-<!-- ─── BUILD PANEL ─── -->
-<div id="panel-build" class="panel-overlay">
-  <div class="backdrop" onclick="closePanel('build')"></div>
-  <div class="panel">
-    <div class="panel-header">
-      <h2>CONSTRUÇÃO</h2>
-      <button class="panel-close" onclick="closePanel('build')">✕</button>
-    </div>
-    <div class="panel-body"><div id="build-grid" class="build-grid"></div></div>
-  </div>
-</div>
+<!-- Build Panel -->
+<div id="p-build" class="pov"><div class="bd" onclick="cp('build')"></div><div class="pnl"><div class="ph"><h2>CONSTRUÇÃO</h2><button class="pc" onclick="cp('build')">✕</button></div><div class="pb"><div id="bgrid" class="bg"></div></div></div></div>
 
-<!-- ─── INVENTORY PANEL ─── -->
-<div id="panel-inventory" class="panel-overlay">
-  <div class="backdrop" onclick="closePanel('inventory')"></div>
-  <div class="panel">
-    <div class="panel-header">
-      <h2>INVENTÁRIO</h2>
-      <button class="panel-close" onclick="closePanel('inventory')">✕</button>
-    </div>
-    <div class="panel-body" id="inv-body"></div>
-  </div>
-</div>
+<!-- Inventory Panel -->
+<div id="p-inv" class="pov"><div class="bd" onclick="cp('inv')"></div><div class="pnl"><div class="ph"><h2>INVENTÁRIO</h2><button class="pc" onclick="cp('inv')">✕</button></div><div class="pb" id="ibody"></div></div></div>
 
-<!-- ─── RESEARCH PANEL ─── -->
-<div id="panel-research" class="panel-overlay">
-  <div class="backdrop" onclick="closePanel('research')"></div>
-  <div class="panel">
-    <div class="panel-header">
-      <h2>PESQUISA</h2>
-      <button class="panel-close" onclick="closePanel('research')">✕</button>
-    </div>
-    <div class="panel-body" id="res-body"></div>
-  </div>
-</div>
+<!-- Research Panel -->
+<div id="p-res" class="pov"><div class="bd" onclick="cp('res')"></div><div class="pnl"><div class="ph"><h2>PESQUISA</h2><button class="pc" onclick="cp('res')">✕</button></div><div class="pb" id="rbody"></div></div></div>
 
 <canvas id="c"></canvas>
-
 <script>
 'use strict';
 
-// ═══════════════════════════════════════════════════════════════
-//  CONSTANTS (no dead systems — only what's used)
-// ═══════════════════════════════════════════════════════════════
-
-const TILE=40, COLS=80, ROWS=60;
-const WW=COLS*TILE, WH=ROWS*TILE;
-const CVW=900, CVH=600;
-const DAY_PERIOD=200;
-
+// ════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════
+const TILE=40,COLS=80,ROWS=60,WW=COLS*TILE,WH=ROWS*TILE;
+const CVW=900,CVH=600,DAY_PERIOD=200;
 const T={VOID:0,GROUND:1,ROCK:2,DEEP:3,SAND:4,FLORA:5};
-
 const RES=[
-  {name:'Crystal',c:'#00d4ff'},{name:'Resina',c:'#ff9900'},{name:'Composto',c:'#44ff88'},
-  {name:'Minério',c:'#ff4488'},{name:'Orgânico',c:'#99ff33'},{name:'Gelo',c:'#88ddff'},
-  {name:'Gás',c:'#ccaa00'},{name:'Artefato',c:'#ff00ff'},{name:'Joia',c:'#ff69b4'},
-  {name:'Comb',c:'#8b4513'},{name:'Platina',c:'#e5e4e2'},{name:'Titânio',c:'#ccccdd'},
+  {n:'Crystal',c:'#00d4ff'},{n:'Resina',c:'#ff9900'},{n:'Composto',c:'#44ff88'},
+  {n:'Minério',c:'#ff4488'},{n:'Orgânico',c:'#99ff33'},{n:'Gelo',c:'#88ddff'},
+  {n:'Gás',c:'#ccaa00'},{n:'Artefato',c:'#ff00ff'},{n:'Joia',c:'#ff69b4'},
+  {n:'Combustível',c:'#8b4513'},{n:'Platina',c:'#e5e4e2'},{n:'Titânio',c:'#ccccdd'},
 ];
-
-const STRUCT=[
-  {name:'Habitat',     w:2,h:2,col:'#3399ff',cst:{2:6,1:4},    desc:'Regenera O² e HP'},
-  {name:'Solar',       w:2,h:1,col:'#ffdd00',cst:{0:3,3:2},    desc:'Gera energia de dia'},
-  {name:'Depósito',    w:1,h:1,col:'#88aa',cst:{1:4},           desc:'+capacidade inv'},
-  {name:'Fabricador',  w:2,h:2,col:'#ff8833',cst:{3:6,0:4},    desc:'Craftar itens'},
-  {name:'Laboratório', w:2,h:2,col:'#dd00dd',cst:{7:8,0:6},    desc:'Desbloqueia pesq.'},
-  {name:'Fazenda',     w:2,h:2,col:'#00aa00',cst:{4:5,8:3},    desc:'Produz Orgânico'},
-  {name:'Ext. água',   w:1,h:1,col:'#0088ff',cst:{0:4,2:3},    desc:'Produz Gelo'},
-  {name:'Turbina',     w:2,h:2,col:'#888888',cst:{10:6,0:5},   desc:'Energia de noite'},
-  {name:'Escudo',      w:1,h:1,col:'#ff4444',cst:{0:8,10:5},   desc:'Proteção clima'},
-  {name:'Torre luz',   w:1,h:1,col:'#ffff00',cst:{0:3},         desc:'Ilumina área'},
-  {name:'Aterrador',   w:2,h:1,col:'#555555',cst:{1:6,3:4},    desc:'Chão nivelado'},
-  {name:'Tanque O²',   w:1,h:1,col:'#00ffff',cst:{2:4,6:3},    desc:'Armazena O²'},
-  {name:'Ger. nuclear',w:3,h:3,col:'#00ff66',cst:{7:12,10:8,11:5},desc:'Energia infinita'},
-  {name:'Rampa',       w:3,h:3,col:'#ffaa00',cst:{10:15,11:10,0:20},desc:'Escape'},
-  {name:'Câm. pesq.',  w:2,h:2,col:'#9900ff',cst:{7:10,0:8},   desc:'Pesquisa avançada'},
+const ST=[
+  {n:'Habitat',w:2,h:2,c:'#3399ff',cs:{2:6,1:4},d:'Regenera O² e HP'},
+  {n:'Painel Solar',w:2,h:1,c:'#ffdd00',cs:{0:3,3:2},d:'Gera energia de dia'},
+  {n:'Depósito',w:1,h:1,c:'#88aaff',cs:{1:4},d:'+capacidade inv'},
+  {n:'Fabricador',w:2,h:2,c:'#ff8833',cs:{3:6,0:4},d:'Craftar itens'},
+  {n:'Laboratório',w:2,h:2,c:'#dd00dd',cs:{7:8,0:6},d:'Desbloqueia pesq.'},
+  {n:'Fazenda',w:2,h:2,c:'#00aa00',cs:{4:5,8:3},d:'Produz Orgânico'},
+  {n:'Ext. água',w:1,h:1,c:'#0088ff',cs:{0:4,2:3},d:'Produz Gelo'},
+  {n:'Turbina',w:2,h:2,c:'#888888',cs:{10:6,0:5},d:'Energia de noite'},
+  {n:'Escudo',w:1,h:1,c:'#ff4444',cs:{0:8,10:5},d:'Proteção clima'},
+  {n:'Torre luz',w:1,h:1,c:'#ffff00',cs:{0:3},d:'Ilumina área'},
+  {n:'Aterrador',w:2,h:1,c:'#555555',cs:{1:6,3:4},d:'Chão nivelado'},
+  {n:'Tanque O²',w:1,h:1,c:'#00ffff',cs:{2:4,6:3},d:'Armazena O²'},
+  {n:'Ger. nuclear',w:3,h:3,c:'#00ff66',cs:{7:12,10:8,11:5},d:'Energia infinita'},
+  {n:'Rampa',w:3,h:3,c:'#ffaa00',cs:{10:15,11:10,0:20},d:'Escape final'},
+  {n:'Câm. pesq.',w:2,h:2,c:'#9900ff',cs:{7:10,0:8},d:'Pesquisa avançada'},
 ];
-
-const RESEARCH=[
-  {id:'drill1',  name:'Broca Mk.I',    cost:{7:2},   bonus:{mineSpd:1.35}, desc:'+35% velocidade mineração'},
-  {id:'drill2',  name:'Broca Mk.II',   cost:{7:4,10:3}, bonus:{mineSpd:1.75},  req:'drill1', desc:'+75% velocidade mineração'},
-  {id:'tank1',   name:'Tanque Extra',  cost:{7:3,2:4},  bonus:{maxO2:150},    req:'drill1', desc:'+50% capacidade O²'},
-  {id:'suit1',   name:'Suit Reforçada',cost:{7:6,11:4}, bonus:{maxO2:200,maxHP:150}, req:'tank1', desc:'O²++ HP++'},
-  {id:'batt1',   name:'Bateria Densa', cost:{10:4,0:6}, bonus:{},            req:'drill2', desc:'Futuro: eficiência energia'},
+const RSRCH=[
+  {id:'dr1',nm:'Broca Mk.I',cs:{7:2},b:{ms:1.35},d:'+35% vel. mineração'},
+  {id:'dr2',nm:'Broca Mk.II',cs:{7:4,10:3},b:{ms:1.75},rq:'dr1',d:'+75% vel. mineração'},
+  {id:'tk1',nm:'Tanque Extra',cs:{7:3,2:4},b:{mo:150},rq:'dr1',d:'+50% cap. O²'},
+  {id:'st1',nm:'Suit Reforçada',cs:{7:6,11:4},b:{mo:200,mh:150},rq:'tk1',d:'O²++ HP++'},
+  {id:'bt1',nm:'Bateria Densa',cs:{10:4,0:6},b:{},rq:'dr2',d:'+eficiência solar'},
 ];
 
 // ════════════════════════════════════════════
 //  UTILS
 // ════════════════════════════════════════════
-
-function lerpCol(a,b,t){
-  return [a[0]+(b[0]-a[0])*t|0, a[1]+(b[1]-a[1])*t|0, a[2]+(b[2]-a[2])*t|0];
-}
-function rectOv(ax,ay,aw,ah,bx,by,bw,bh){return ax<bx+bw&&ax+aw>bx&&ay<by+bh&&ay+ah>by;}
-function seeded(v,s){const n=((s+v)*1664525+1013904223)&0xffffffff;return(n>>>16)/65536;}
-function noise2d(x,y,s){
-  const ix=Math.floor(x),iy=Math.floor(y),fx=x-ix,fy=y-iy;
-  const a=seeded(ix*1000+iy,s),b=seeded((ix+1)*1000+iy,s);
-  const c=seeded(ix*1000+(iy+1),s),d=seeded((ix+1)*1000+(iy+1),s);
-  const ux=fx*fx*(3-2*fx),uy=fy*fy*(3-2*fy);
-  return a+(b-a)*ux+(c-a)*uy+(a-b-c+d)*ux*uy;
-}
-
-
-// ═══════════════════════════════════════════════════════════════
-//  STATE
-// ═══════════════════════════════════════════════════════════════
-
-let canvas,ctx,keys={};
-let world={};
-let player={};
-let cam={x:0,y:0};
-let gameTime=0,dayCycle=0,frame=0,running=false,paused=false,lastTime=0;
-let buildMode=null;
-
-// Panels state
-let buildOpen=false, invOpen=false, resOpen=false;
+function lerpCol(a,b,t){return[a[0]+(b[0]-a[0])*t|0,a[1]+(b[1]-a[1])*t|0,a[2]+(b[2]-a[2])*t|0]}
+function rectOv(ax,ay,aw,ah,bx,by,bw,bh){return ax<bx+bw&&ax+aw>bx&&ay<by+bh&&ay+ah>by}
+function fhash(a,b){const n=((a*20803+b*19201+17701)&0x7fffffff);return n/0x7fffffff}
+function seeded(v,s){const n=((s+v)*1664525+1013904223)&0xffffffff;return(n>>>16)/65536}
 
 // ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+let cv,cx,keys={};
+let W={},P={},cam={x:0,y:0};
+let gt=0,dc=0,fr=0,run=false,pau=false,lt=0;
+let bmode=null;
+// Panel state
+let bp=false,ip=false,rp=false;
+
+// ════════════════════════════════════════
 //  WORLD GEN
 // ════════════════════════════════════════════
-
 function genWorld(){
-  const s=Math.floor(Math.random()*99999);
+  const seed=Math.floor(Math.random()*99999);
   const tiles=new Uint8Array(COLS*ROWS);
-  for(let y=0;y<ROWS;y++) for(let x=0;x<COLS;x++){
-    const n=noise2d(x/10,y/10,s)+noise2d(x/4,y/4,s)*0.3;
-    tiles[y*COLS+x]=n>.75?T.ROCK:n>.67?T.DEEP:n<.22?T.SAND:seeded(x*71+y*37,s)>.93?T.FLORA:T.GROUND;
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const n=seeded(x*99+y*77,seed)*0.7+seeded(x*25+yy*51,seed)*0.3;
+    tiles[y*COLS+x]=n>.75?T.ROCK:n>.67?T.DEEP:n<.22?T.SAND:seeded(x*71+y*37,seed)>.93?T.FLORA:T.GROUND;
   }
-  const cx=Math.floor(COLS/2),cy=Math.floor(ROWS/2);
-  for(let dy=-4;dy<=4;dy++) for(let dx=-4;dx<=4;dx++) tiles[(cy+dy)*COLS+(cx+dx)]=T.GROUND;
+  const mx=Math.floor(COLS/2),my=Math.floor(ROWS/2);
+  for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++) tiles[(my+dy)*COLS+(mx+dx)]=T.GROUND;
   return tiles;
 }
 
-function spawnRes(){
-  const res=[], s=Math.floor(Math.random()*99999);
-  function rng(v){const n=((s+v)*1664525+1013904223)&0xffffffff;return(n>>>16)/65536;}
-  const counts=[60,55,60,50,45];
+function spawnRes(tiles){
+  const res=[],seed2=Math.floor(Math.random()*99999);
+  function rng(v){const n=((seed2+v)*1664525+1013904223)&0xffffffff;return(n>>>16)/65536}
+  const cnt=[60,55,60,50,45];
   for(let type=0;type<5;type++){
-    let placed=0,att=0;
-    while(placed<counts[type]&&att<8000){
-      att++;
-      const x=2+Math.floor(rng(att*type+placed*19)*(COLS-4));
-      const y=2+Math.floor(rng(att*type*3+placed*13)*(ROWS-4));
-      const t=world.tiles[y*COLS+x];
-      if((t===T.GROUND||t===T.SAND)&&Math.hypot(x-COLS/2,y-ROWS/2)>5){
-        res.push({x:x*TILE+TILE/2,y:y*TILE+TILE/2,type,amount:3+Math.floor(rng(att)*6),maxAmount:9,mineProgress:0,id:res.length});
+    let placed=0,at=0;
+    while(placed<cnt[type]&&at<8000){
+      at++;
+      const x=2+Math.floor(rng(at*type+placed*19)*(COLS-4));
+      const y=2+Math.floor(rng(at*type*3+placed*13)*(ROWS-4));
+      const t2=tiles[y*COLS+x];
+      if((t2===T.GROUND||t2===T.SAND)&&Math.hypot(x-COLS/2,y-ROWS/2)>5){
+        res.push({x:x*TILE+TILE/2,y:y*TILE+TILE/2,type,amount:3+Math.floor(rng(at)*6),maxAmount:9,mp:0,id:res.length});
         placed++;
       }
     }
@@ -306,708 +188,433 @@ function spawnRes(){
   return res;
 }
 
-// ════════════════════════════════════════════
-//  PLAYER
-// ════════════════════════════════════════════
-
-function mkPlayer(){
-  return{
-    x:0,y:0,vx:0,vy:0,w:20,h:14,
-    speed:185, health:100,maxHealth:100,
-    o2:100,maxO2:100, facing:1,walkAnim:0,
-    inv:new Array(12).fill(0),
-    miningTarget:null,mineProgress:0, mineSpeedMult:1,
-    alive:true,score:0,
-    nearHabitat:false,survivalTime:0, attackCooldown:0,
-  };
-}
-
-// ════════════════════════════════════════════
+// ════════════════════════════════════════
 //  STRUCTURES
 // ════════════════════════════════════════════
-
-function placeStruct(type,tx,ty){
-  const sd=STRUCT[type];
-  for(const[k,v]of Object.entries(sd.cst)) player.inv[+k]-=v;
-  world.structures.push({type,tx,ty,wx:tx*TILE,wy:ty*TILE,w:sd.w*TILE,h:sd.h*TILE,hp:100});
-  for(let dy=0;dy<sd.h;dy++) for(let dx=0;dx<sd.w;dx++) world.tiles[(ty+dy)*COLS+(tx+dx)]=T.VOID;
-  spawnParts(tx*TILE+sd.w*TILE/2,ty*TILE+sd.h*TILE/2,sd.col,16);
+function placeStruct(tp,tx,ty){
+  const sd=ST[tp];
+  for(const[k,v]of Object.entries(sd.cs)) P.inv[+k]-=v;
+  W.structs.push({type:tp,tx,ty,wx:tx*TILE,wy:ty*TILE,w:sd.w*TILE,h:sd.h*TILE,hp:100});
+  for(let dy=0;dy<sd.h;dy++)for(let dx=0;dx<sd.w;dx++) W.tiles[(ty+dy)*COLS+(tx+dx)]=T.VOID;
+  parts(tx*TILE+sd.w*TILE/2,ty*TILE+sd.h*TILE/2,sd.c,16);
 }
 
-function canPlace(type,tx,ty){
-  const sd=STRUCT[type];
+function canPlace(tp,tx,ty){
+  const sd=ST[tp];
   if(tx<1||ty<1||tx+sd.w>COLS-1||ty+sd.h>ROWS-1) return false;
-  for(let dy=0;dy<sd.h;dy++) for(let dx=0;dx<sd.w;dx++){
-    const t=world.tiles[(ty+dy)*COLS+(tx+dx)];
-    if(t===T.ROCK||t===T.DEEP||t===T.VOID) return false;
+  for(let dy=0;dy<sd.h;dy++)for(let dx=0;dx<sd.w;dx++){
+    const t2=W.tiles[(ty+dy)*COLS+(tx+dx)];
+    if(t2===T.ROCK||t2===T.DEEP||t2===T.VOID) return false;
   }
-  for(const s of world.structures)
-    if(rectOv(tx*TILE,ty*TILE,sd.w*TILE,sd.h*TILE,s.wx,s.wy,s.w,s.h)) return false;
+  for(const s of W.structs) if(rectOv(tx*TILE,ty*TILE,sd.w*TILE,sd.h*TILE,s.wx,s.wy,s.w,s.h)) return false;
   return true;
 }
 
-function canAfford(type){
-  for(const[k,v]of Object.entries(STRUCT[type].cst)) if(player.inv[+k]<v) return false;
-  return true;
-}
+function canAfford(tp){for(const[k,v]of Object.entries(ST[tp].cs)) if(P.inv[+k]<v) return false;return true}
 
 // ════════════════════════════════════════
 //  PARTICLES
-// ════════════════════════════════════════
-
-function spawnParts(x,y,col,n=6){
+// ════════════════════════════════════════════
+function parts(x,y,c,n=6){
   for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2,spd=30+Math.random()*90;
-    const life=0.3+Math.random()*0.6;
-    world.particles.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,color:col,life,maxLife:life,size:2+Math.random()*3});
+    const a=Math.random()*Math.PI*2,sp=30+Math.random()*90,lf=0.3+Math.random()*0.6;
+    W.parts.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,color:c,life:lf,ml:lf,sz:2+Math.random()*3});
   }
 }
 
 // ════════════════════════════════════════
 //  COLLISION
 // ════════════════════════════════════════
-
-function tileBlocked(x,y,w,h){
+function hitTest(x,y,w,h){
   const hw=w/2,hh=h/2;
   const x1=Math.floor((x-hw)/TILE),x2=Math.floor((x+hw-1)/TILE);
   const y1=Math.floor((y-hh)/TILE),y2=Math.floor((y+hh-1)/TILE);
-  for(let ty=y1;ty<=y2;ty++) for(let tx=x1;tx<=x2;tx++){
+  for(let ty=y1;ty<=y2;ty++)for(let tx=x1;tx<=x2;tx++){
     if(tx<0||tx>=COLS||ty<0||ty>=ROWS) return true;
-    const t=world.tiles[ty*COLS+tx];
-    if(t===T.ROCK||t===T.DEEP||t===T.VOID) return true;
+    const t2=W.tiles[ty*COLS+tx];
+    if(t2===T.ROCK||t2===T.DEEP||t2===T.VOID) return true;
   }
   return false;
 }
 
-function moveEnt(e,dt){
+function moveE(e,dt){
   const nx=e.x+e.vx*dt,ny=e.y+e.vy*dt;
-  if(!tileBlocked(nx,e.y,e.w,e.h)) e.x=nx;
-  if(!tileBlocked(e.x,ny,e.w,e.h)) e.y=ny;
+  if(!hitTest(nx,e.y,e.w,e.h)) e.x=nx;
+  if(!hitTest(e.x,ny,e.w,e.h)) e.y=ny;
 }
 
 // ════════════════════════════════════════
 //  RESEARCH
 // ════════════════════════════════════════
-
-function canUnlock(res){
-  if(res.unlocked) return 'done';
-  if(res.req && !RESEARCH.find(r=>r.id===res.req)?.unlocked) return 'miss';
-  for(const[k,v]of Object.entries(res.cost)) if((player.inv[+k]||0)<v) return 'miss';
+function rStatus(r){
+  if(r.un) return 'done';
+  if(r.rq&&!RSRCH.find(x=>x.id===r.rq)?.un) return 'miss';
+  for(const[k,v]of Object.entries(r.cs)) if(P.inv[+k]<v) return 'miss';
   return 'ok';
 }
 
-function unlockResearch(res){
-  const st=canUnlock(res);
-  if(st!=='ok') return;
-  for(const[k,v]of Object.entries(res.cost)) player.inv[+k]-=v;
-  res.unlocked=true;
-  if(res.bonus.mineSpd) player.mineSpeedMult=Math.min(player.mineSpeedMult*res.bonus.mineSpd,3);
-  if(res.bonus.maxO2){player.maxO2=res.bonus.maxO2;player.o2=Math.min(player.o2,res.bonus.maxO2);}
-  if(res.bonus.maxHP){player.maxHealth=res.bonus.maxHP;player.health=Math.min(player.health,res.bonus.maxHP);}
-  spawnParts(player.x,player.y,'#9900ff',20);
+function unlockR(r){
+  if(rStatus(r)!=='ok') return;
+  for(const[k,v]of Object.entries(r.cs)) P.inv[+k]-=v;
+  r.un=true;
+  if(r.b.ms) P.msm=Math.min(P.msm*r.b.ms,3);
+  if(r.b.mo){P.maxO2=r.b.mo;P.o2=Math.min(P.o2,r.b.mo)}
+  if(r.b.mh){P.maxHealth=r.b.mh;P.health=Math.min(P.health,r.b.mh)}
+  parts(P.x,P.y,'#9900ff',20);
 }
 
 // ════════════════════════════════════════
 //  PANELS
-// ════════════════════════════════════════
-
-function openPanel(name){
-  closePanelAll();
-  if(name==='build'){buildOpen=true;renderBuildPanel();}
-  else if(name==='inv'){invOpen=true;renderInvPanel();}
-  else if(name==='research'){resOpen=true;renderResPanel();}
-  document.getElementById('panel-'+name).classList.add('open');
+// ════════════════════════════════════════════
+function op(pn){cp('build');cp('inv');cp('res');
+  if(pn==='build'){bp=true;rBuild()}else if(pn==='inv'){ip=true;rInv()}else if(pn==='res'){rp=true;rRes()}
+  document.getElementById('p-'+pn).classList.add('open');
 }
 
-function closePanel(name){
-  if(name==='build')buildOpen=false;
-  else if(name==='inv')invOpen=false;
-  else if(name==='research')resOpen=false;
-  document.getElementById('panel-'+name).classList.remove('open');
+function cp(pn){
+  if(pn==='build')bp=false;
+  else if(pn==='inv')ip=false;
+  else if(pn==='res')rp=false;
+  document.getElementById('p-'+pn).classList.remove('open');
 }
 
-function closePanelAll(){
-  closePanel('build');closePanel('inv');closePanel('research');
-}
-
-function renderBuildPanel(){
-  const el=document.getElementById('build-grid');
-  let html='';
-  for(let i=0;i<STRUCT.length;i++){
-    const sd=STRUCT[i], afford=canAfford(i);
-    html+=`<div class="build-card${afford?'':' no-afford'}" onclick="tryBuild(${i})">
-      <div class="bname" style="color:${sd.col}">${sd.name}</div>
-      <div class="bdesc">${sd.desc}</div>
-      <div class="bbcost">${Object.entries(sd.cst).map(([k,v])=>`<span>${v}x ${RES[+k].name}</span>`).join(' · ')}</div>
-    </div>`;
+function rBuild(){
+  let h='';
+  for(let i=0;i<ST.length;i++){
+    const sd=ST[i],af=canAfford(i);
+    h+=`<div class="bc${af?'':' na'}" onclick="tryB(${i})"><div class="bcn" style="color:${sd.c}">${sd.n}</div><div class="bcd">${sd.d}</div><div class="bcc">${Object.entries(sd.cs).map(([k,v])=>`<span>${v} ${RES[+k].n}</span>`).join(' · ')}</div></div>`;
   }
-  el.innerHTML=html;
+  document.getElementById('bgrid').innerHTML=h;
 }
 
-function renderInvPanel(){
-  const el=document.getElementById('inv-body');
-  const used=player.inv.reduce((a,b)=>a+b,0);
-  let html='<div class="inv-list">';
+function rInv(){
+  const used=P.inv.reduce((a,b)=>a+b,0);
+  let h='<div class="il">';
   for(let i=0;i<RES.length;i++){
-    if(player.inv[i]<=0) continue;
-    html+=`<div class="inv-row">
-      <div class="inv-dot" style="background:${RES[i].c}"></div>
-      <div class="inv-lbl">${RES[i].name}</div>
-      <div class="inv-val" style="color:${RES[i].c}">${player.inv[i]}</div>
-    </div>`;
+    if(P.inv[i]<=0) continue;
+    h+=`<div class="ir"><div class="idot" style="background:${RES[i].c}"></div><div class="ilb">${RES[i].n}</div><div class="iv" style="color:${RES[i].c}">${P.inv[i]}</div></div>`;
   }
-  if(used===0) html+='<div style="color:#445;text-align:center;padding:20px;font-size:0.8rem">Inventário vazio — mine recursos com [E]</div>';
-  html+=`</div><div class="inv-footer">${used} / ${ } slots · Score: ${player.score}</div>`;
-  el.innerHTML=html;
+  if(!used) h+='<div style="color:#445;text-align:center;padding:20px;font-size:0.75rem">Vazio — mine com [E]</div>';
+  h+=`</div><div class="ifr">${used} / ${P.maxInv} slots · Score: ${P.score} · ${Math.floor(P.st)}s</div>`;
+  document.getElementById('ibody').innerHTML=h;
 }
 
-function renderResPanel(){
-  const el=document.getElementById('res-body');
-  let html='<div class="res-list">';
-  for(const res of RESEARCH){
-    const st=canUnlock(res);
-    const cls=st==='done'?'done':st==='ok'?'ready':'locked';
-    const lbl=st==='done'?'✓ CONCLUÍDO':st==='ok'?'APLICAR':'???';
-    const slbl=st==='done'?'done':st==='ok'?'ready':'miss';
-    const onclick=st==='ok'?`onclick="doResearch('${res.id}')"`:'';
-    html+=`<div class="res-card ${cls}" ${onclick}>
-      <div class="res-icon">R</div>
-      <div class="res-info">
-        <div class="rn">${res.name}</div>
-        <div class="rd">${res.desc}</div>
-        <div class="rc">${Object.entries(res.cost).map(([k,v])=>`<span>${v}x ${RES[+k].name}</span>`).join(' · ')}</div>
-      </div>
-      <div class="res-st ${slbl}">${lbl}</div>
-    </div>`;
+function rRes(){
+  let h='<div class="rl">';
+  for(const r of RSRCH){
+    const st2=rStatus(r);
+    const cls=st2==='done'?'done':st2==='ok'?'ready':'locked';
+    const lb=st2==='done'?'✓':st2==='ok'?'APLICAR':'???';
+    const sl=st2==='done'?'done':st2==='ok'?'ok':'miss';
+    const oc2=st2==='ok'?`onclick="doR('${r.id}')"`:'';
+    h+=`<div class="rr ${cls}" ${oc2}><div class="ric">R</div><div class="ri"><div class="rn">${r.nm}</div><div class="rd">${r.d}</div><div class="rc">${Object.entries(r.cs).map(([k,v])=>`<span>${v} ${RES[+k].n}</span>`).join(' · ')}</div></div><div class="rs ${sl}">${lb}</div></div>`;
   }
-  html+='</div>';
-  el.innerHTML=html;
+  h+='</div>';
+  document.getElementById('rbody').innerHTML=h;
 }
 
-function tryBuild(type){
-  if(!canAfford(type)) return;
-  // Exit panel and enter placement mode
-  closePanel('build');
-  buildMode=type;
-}
-
-function doResearch(id){
-  const res=RESEARCH.find(r=>r.id===id);
-  if(!res) return;
-  unlockResearch(res);
-  renderResPanel();
-}
-
-function togglePanel(name){
-  // If the requested panel is already open, close it
-  if(name==='build'&&buildOpen){closePanelAll();return;}
-  if(name==='inv'&&invOpen){closePanelAll();return;}
-  if(name==='research'&&resOpen){closePanelAll();return;}
-  openPanel(name);
-}
+function tryB(tp){if(!canAfford(tp))return;cp('build');bmode=tp}
+function doR(id){const r=RSRCH.find(x=>x.id===id);if(!r)return;unlockR(r);rRes()}
 
 function togglePause(){
-  if(!running) return;
-  paused=!paused;
-  document.getElementById('screen-pause').style.display=paused?'flex':'none';
-  if(!paused){lastTime=performance.now();requestAnimationFrame(loop);}
+  if(!run) return;
+  pau=!pau;
+  document.getElementById('s-pause').style.display=pau?'flex':'none';
+  if(!pau){lt=performance.now();requestAnimationFrame(loop)}
 }
 
-// ══════════════════════════════════════════
+// ════════════════════════════════════════
 //  INPUT
-// ══════════════════════════════════════════
-
-let mouse={x:0,y:0,wx:0,wy:0};
+// ════════════════════════════════════════════
+let ms={x:0,y:0,wx:0,wy:0};
 
 function setupInput(){
   window.addEventListener('keydown',e=>{
-    if(!running) return;
+    if(!run)return;
     keys[e.code]=true;
-
-    if(e.code==='Escape'){closePanelAll();buildMode=null;}
-    if(e.code==='KeyP'){togglePause();return;}
-    if(paused) return;
-
-    // Panel toggles (only when no build placement active)
-    if(e.code==='KeyB'&&!buildMode&&!invOpen&&!resOpen) openPanel('build');
-    else if(e.code==='KeyI'&&!buildOpen&&!resOpen) openPanel('inv');
-    else if(e.code==='KeyR'&&!buildOpen&&!invOpen) openPanel('research');
-    // If any panel is open and B is pressed, close all
-    if(e.code==='KeyB'&&(buildOpen||invOpen||resOpen)){closePanelAll();return;}
-    if(e.code==='KeyI'&&!buildOpen){closePanel('inv');return;}
-    if(e.code==='KeyR'&&!researchOpen){closePanel('research');return;}
-
-    if(document.querySelector('.panel-overlay.open')) return; // ignore building while panel is open
-
-    // Build placement — left click handled separately
+    if(e.code==='Escape'){cp('build');cp('inv');cp('res');bmode=null;e.preventDefault()}
+    if(e.code==='KeyP'){togglePause();return}
+    if(pau)return;
+    if(e.code==='KeyB'){op('build');e.preventDefault();return}
+    if(e.code==='KeyI'){op('inv');e.preventDefault();return}
+    if(e.code==='KeyR'){op('res');e.preventDefault();return}
   });
-
-  window.addEventListener('keyup',e=>{keys[e.code]=false;});
-
-  canvas.addEventListener('mousemove',e=>{
-    const r=canvas.getBoundingClientRect();
-    mouse.x=e.clientX-r.left; mouse.y=e.clientY-r.top;
-    mouse.wx=mouse.x+cam.x; mouse.wy=mouse.y+cam.y;
+  window.addEventListener('keyup',e=>{keys[e.code]=false});
+  cv.addEventListener('mousemove',e=>{
+    const r2=cv.getBoundingClientRect();
+    ms.x=e.clientX-r2.left;ms.y=e.clientY-r2.top;
+    ms.wx=ms.x+cam.x;ms.wy=ms.y+cam.y;
   });
-
-  canvas.addEventListener('click',()=>{
-    if(buildMode!==null&&player.alive){
-      const tx=Math.floor(mouse.wx/TILE),ty=Math.floor(mouse.wy/TILE);
-      if(canPlace(buildMode,tx,ty)&&canAfford(buildMode)){
-        placeStruct(buildMode,tx,ty);
-      }
-      buildMode=null;
+  cv.addEventListener('click',e=>{
+    if(bmode!==null&&P.alive){
+      const tx=Math.floor(ms.wx/TILE),ty=Math.floor(ms.wy/TILE);
+      if(canPlace(bmode,tx,ty)&&canAfford(bmode)) placeStruct(bmode,tx,ty);
+      bmode=null;
     }
   });
 }
 
-// Fix: research open check
-let researchOpen=false;
-</script>
-
-<script>
-'use strict';
 // ════════════════════════════════════════
 //  UPDATE
-// ══════════════════════════════════════════
-
+// ════════════════════════════════════════════
 function update(dt){
-  gameTime+=dt; frame++;
-  dayCycle=(gameTime%DAY_PERIOD)/DAY_PERIOD;
-  updatePlayer(dt);
-  for(const p of world.particles){
-    p.x+=p.vx*dt; p.y+=p.vy*dt; p.vx*=0.88; p.vy*=0.88; p.life-=dt;
-  }
-  world.particles=world.particles.filter(p=>p.life>0);
-  const tx=player.x-CVW/2,ty2=player.y-CVH/2;
-  cam.x+=(tx-cam.x)*0.08;
-  cam.y+=(ty2-cam.y)*0.08;
+  gt+=dt;fr++;
+  dc=(gt%DAY_PERIOD)/DAY_PERIOD;
+  // Player movement when NO PANEL open
+  if(!bp&&!ip&&!rp) updatePlayer(dt);
+  for(const p of W.parts){p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=0.88;p.vy*=0.88;p.life-=dt}
+  W.parts=W.parts.filter(p=>p.life>0);
+  const tx=P.x-CVW/2,ty2=P.y-CVH/2;
+  cam.x+=(tx-cam.x)*0.08;cam.y+=(ty2-cam.y)*0.08;
   cam.x=Math.max(0,Math.min(WW-CVW,cam.x));
   cam.y=Math.max(0,Math.min(WH-CVH,cam.y));
-  mouse.wx=mouse.x+cam.x;
-  mouse.wy=mouse.y+cam.y;
+  ms.wx=ms.x+cam.x;ms.wy=ms.y+cam.y;
 }
 
 function updatePlayer(dt){
-  if(!player.alive) return;
-  player.survivalTime+=dt;
-  player.attackCooldown=Math.max(0,player.attackCooldown-dt);
-
+  if(!P.alive)return;
+  P.st+=dt;
   let dx=0,dy=0;
   if(keys['KeyA']||keys['ArrowLeft'])dx-=1;
   if(keys['KeyD']||keys['ArrowRight'])dx+=1;
   if(keys['KeyW']||keys['ArrowUp'])dy-=1;
   if(keys['KeyS']||keys['ArrowDown'])dy+=1;
+  if(dx||dy){const l2=Math.hypot(dx,dy);P.vx=(dx/l2)*P.spd;P.vy=(dy/l2)*P.spd;if(dx)P.fc=dx>0?1:-1;P.wa+=dt*8}
+  else{P.vx*=0.7;P.vy*=0.7}
+  moveE(P,dt);
+  P.x=Math.max(20,Math.min(WW-20,P.x));
+  P.y=Math.max(20,Math.min(WH-20,P.y));
 
-  if(dx||dy){
-    const len=Math.hypot(dx,dy);
-    player.vx=(dx/len)*player.speed;
-    player.vy=(dy/len)*player.speed;
-    if(dx) player.facing=dx>0?1:-1;
-    player.walkAnim+=dt*8;
-  } else { player.vx*=0.7; player.vy*=0.7; }
-
-  moveEnt(player,dt);
-  player.x=Math.max(20,Math.min(WW-20,player.x));
-  player.y=Math.max(20,Math.min(WH-20,player.y));
-
-  // Habitat check
-  player.nearHabitat=false;
-  for(const s of world.structures){
-    if(s.type===0){
-      const cx=s.wx+s.w/2,cy=s.wy+s.h/2;
-      if(Math.hypot(player.x-cx,player.y-cy)<170){player.nearHabitat=true;break;}
-    }
+  // Habitat
+  P.nhab=false;
+  for(const s of W.structs){
+    if(s.type===0&&Math.hypot(P.x-(s.wx+s.w/2),P.y-(s.wy+s.h/2))<170){P.nhab=true;break}
   }
-
-  if(player.nearHabitat){
-    player.o2=Math.min(player.maxO2,player.o2+25*dt);
-    player.health=Math.min(player.maxHealth,player.health+8*dt);
-  } else {
-    player.o2-=2.5*dt;
-    if(player.o2<=0){player.o2=0;player.health-=12*dt;}
-  }
+  if(P.nhab){P.o2=Math.min(P.maxO2,P.o2+25*dt);P.health=Math.min(P.maxHealth,P.health+8*dt)}
+  else{P.o2-=2.5*dt;if(P.o2<=0){P.o2=0;P.health-=12*dt}}
 
   // Mining
-  if(keys['KeyE']&&!buildMode&&!document.querySelector('.panel-overlay.open')) doMining(dt);
-  else {player.miningTarget=null;player.mineProgress=0;}
+  if(keys['KeyE']&&!bmode) doMine(dt);else{P.mt=null;P.mp=0}
 
-  if(player.health<=0){
-    player.alive=false;
-    const reason=player.o2<=0?'Morte por asfixia — O² esgotado':'Morte por exposição planetária';
+  if(P.health<=0){
+    P.alive=false;
+    const rsn=P.o2<=0?'Morte por asfixia — O² esgotado':'Morte por exposição planetária';
     setTimeout(()=>{
-      document.getElementById('death-reason').textContent=`${reason} · ${Math.floor(player.survivalTime)}s sobrevividos`;
-      document.getElementById('screen-gameover').style.display='flex';
+      document.getElementById('death-reason').textContent=`${rsn} · ${Math.floor(P.st)}s sobrevividos`;
+      document.getElementById('s-over').style.display='flex';
     },1200);
   }
 }
 
-function doMining(dt){
-  if(!player.alive) return;
-  let closest=null,closestDist=75;
-  for(const r of world.resources){
-    if(r.amount<=0) continue;
-    const d=Math.hypot(player.x-r.x,player.y-r.y);
-    if(d<closestDist){closest=r;closestDist=d;}
-  }
-  if(!closest){player.miningTarget=null;player.mineProgress=0;return;}
-  if(player.miningTarget!==closest){player.miningTarget=closest;player.mineProgress=0;}
-  player.mineProgress+=dt/1.4*player.mineSpeedMult;
-  if(frame%5===0) spawnParts(closest.x,closest.y,RESData[closest.type].c,2);
-  if(player.mineProgress>=1){
-    player.mineProgress=0;
-    const total=player.inv.reduce((a,b)=>a+b,0);
-    if(total<player.maxInv){
-      player.inv[closest.type]++;
-      closest.amount--;
-      spawnParts(closest.x,closest.y,RESData[closest.type].c,10);
+function doMine(dt){
+  let nr=null,nd=75;
+  for(const r of W.res){if(r.amount<=0)continue;const d=Math.hypot(P.x-r.x,P.y-r.y);if(d<nd){nr=r;nd=d}}
+  if(!nr){P.mt=null;P.mp=0;return}
+  if(P.mt!==nr){P.mt=nr;P.mp=0}
+  P.mp+=dt/1.4*P.msm;
+  if(fr%5===0) parts(nr.x,nr.y,RES[nr.type].c,2);
+  if(P.mp>=1){
+    P.mp=0;
+    if(P.inv.reduce((a,b)=>a+b,0)<P.maxInv){
+      P.inv[nr.type]++;nr.amount--;
+      parts(nr.x,nr.y,RES[nr.type].c,10);
     }
   }
 }
 
 // ════════════════════════════════════════
-//  RENDER TILES
-// ════════════════════════════════════════
+//  RENDER
+// ════════════════════════════════════════════
+function render(){
+  const night=Math.max(0,Math.sin(dc*Math.PI*2-Math.PI)*0.9+0.2);
+  const bg2=lerpCol([14,6,28],[4,1,10],Math.min(1,night*1.4));
+  cx.fillStyle=`rgb(${bg2[0]},${bg2[1]},${bg2[2]})`;
+  cx.fillRect(0,0,CVW,CVH);
+  if(night>0.1){cx.fillStyle=`rgba(0,0,12,${night*0.45})`;cx.fillRect(0,0,CVW,CVH)}
 
-function renderTiles(){
-  const sx=Math.max(0,Math.floor(cam.x/TILE)),sy=Math.max(0,Math.floor(cam.y/TILE));
-  const ex=Math.min(COLS-1,sx+Math.ceil(CVW/TILE)+1),ey=Math.min(ROWS-1,sy+Math.ceil(CVH/TILE)+1);
-  for(let y=sy;y<=ey;y++) for(let x=sx;x<=ex;x++){
-    const t=world.tiles[y*COLS+x],px=x*TILE,py=y*TILE;
-    switch(t){
-      case T.GROUND:drawGround(px,py,x,y);break;
-      case T.ROCK:drawRock(px,py,x,y,false);break;
-      case T.DEEP:drawRock(px,py,x,y,true);break;
-      case T.SAND:drawSand(px,py,x,y);break;
-      case T.FLORA:drawFlora(px,py,x,y);break;
-      case T.VOID:ctx.fillStyle='#060011';ctx.fillRect(px,py,TILE,TILE);break;
-    }
+  cx.save();cx.translate(-cam.x,-cam.y);
+  rTiles();rStructs();rRes();rParts();rPlayer();
+  if(bmode!==null) rGhost();
+  cx.restore();
+  rHUD();
+}
+
+function rTiles(){
+  const sx2=Math.max(0,Math.floor(cam.x/TILE)),sy2=Math.max(0,Math.floor(cam.y/TILE));
+  const ex2=Math.min(COLS-1,sx2+Math.ceil(CVW/TILE)+1),ey2=Math.min(ROWS-1,sy2+Math.ceil(CVH/TILE)+1);
+  for(let y=sy2;y<=ey2;y++)for(let x=sx2;x<=ex2;x++){
+    const t2=W.tiles[y*COLS+x],px=x*TILE,py=y*TILE;
+    if(t2===T.GROUND){drawG(px,py,x,y)}
+    else if(t2===T.ROCK){drawR(px,py,x,y,false)}
+    else if(t2===T.DEEP){drawR(px,py,x,y,true)}
+    else if(t2===T.SAND){drawS(px,py,x,y)}
+    else if(t2===T.FLORA){drawF(px,py,x,y)}
+    else if(t2===T.VOID){cx.fillStyle='#060011';cx.fillRect(px,py,TILE,TILE)}
   }
 }
 
-function drawGround(px,py,tx,ty){
-  const v=rng2d(tx,ty)*0.18;
-  ctx.fillStyle=`rgb(${18+v*28|0},${9+v*16|0},${32+v*38|0})`;
-  ctx.fillRect(px,py,TILE,TILE);
-  ctx.strokeStyle='rgba(55,25,75,0.25)'; ctx.lineWidth=0.5;
-  ctx.strokeRect(px,py,TILE,TILE);
-  if(rng2d(tx*3,ty)>0.82){
-    ctx.fillStyle=`rgba(80,40,110,${rng2d(tx,ty)*0.4+0.1})`;
-    ctx.beginPath(); ctx.arc(px+rng2d(tx*7,ty)*TILE,py+rng2d(tx,ty*7)*TILE,1.5,0,Math.PI*2); ctx.fill();
-  }
+function drawG(px,py,tx,ty){
+  const v=fhash(tx,ty)*0.18;
+  cx.fillStyle=`rgb(${18+v*27|0},${9+v*15|0},${32+v*36|0})`;
+  cx.fillRect(px,py,TILE,TILE);
+  cx.strokeStyle='rgba(55,25,75,0.25)';cx.lineWidth=0.5;cx.strokeRect(px,py,TILE,TILE);
+  if(fhash(tx*3,ty)>0.82){cx.fillStyle=`rgba(80,40,110,${fhash(tx,ty)*0.4+0.1})`;cx.beginPath();cx.arc(px+fhash(tx*7,ty)*TILE,py+fhash(tx,ty*7)*TILE,1.5,0,Math.PI*2);cx.fill()}
 }
 
-function rng2d(a,b){const n=((a*20803+b*19201+17701)&0xffffffff)>>>16;return n/65536;}
-
-function drawRock(px,py,tx,ty,deep){
-  ctx.fillStyle=deep?'#07001a':'#110828'; ctx.fillRect(px,py,TILE,TILE);
-  ctx.fillStyle=deep?'#0d0030':'#1a0e40';
-  const pts=[[8,8],[24,6],[4,22],[26,20],[14,14]];
-  for(const[ox,oy]of pts) if(rng2d(tx+ox,ty+oy)>0.55) ctx.fillRect(px+ox,py+oy,rng2d(tx,oy)*10+4,rng2d(ty,ox)*8+3);
-  if(deep){ctx.strokeStyle='rgba(90,0,180,0.35)';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(px+rng2d(tx,ty)*TILE,py);ctx.lineTo(px+rng2d(tx+1,ty)*TILE,py+TILE);ctx.stroke();}
+function drawR(px,py,tx,ty,deep){
+  cx.fillStyle=deep?'#07001a':'#110828';cx.fillRect(px,py,TILE,TILE);
+  cx.fillStyle=deep?'#0d0030':'#1a0e40';
+  [[8,8],[24,6],[4,22],[26,20],[14,14]].forEach(([ox,oy])=>{if(fhash(tx*ox,ty*oy)>0.55)cx.fillRect(px+ox,py+oy,fhash(tx,oy)*10+4,fhash(ty,ox)*8+3)});
+  if(deep){cx.strokeStyle='rgba(90,0,180,0.35)';cx.lineWidth=1;cx.beginPath();cx.moveTo(px+fhash(tx,ty)*TILE,py);cx.lineTo(px+fhash(tx+1,ty)*TILE,py+TILE);cx.stroke()}
 }
 
-function drawSand(px,py,tx,ty){
-  const v=rng2d(tx*3,ty*7)*0.2;
-  ctx.fillStyle=`rgb(${58+v*38|0},${28+v*18|0},${18+v*12|0})`;
-  ctx.fillRect(px,py,TILE,TILE);
+function drawS(px,py,tx,ty){cx.fillStyle=`rgb(${58+fhash(tx*3,ty*7)*36|0},${28+fhash(tx,ty)*20|0},${18+fhash(tx,ty)*14|0})`;cx.fillRect(px,py,TILE,TILE)}
+
+function drawF(px,py,tx,ty){
+  drawG(px,py,tx,ty);
+  const ph=fr*0.035+fhash(tx*9,ty)*6.28,sw=Math.sin(ph)*2.5;
+  const h=10+fhash(tx*7,ty*3)*14;
+  const hue=fhash(tx+100,ty*3)>0.5?'#00ff88':'#ff44aa';
+  cx.strokeStyle=hue;cx.lineWidth=2;cx.shadowColor=hue;cx.shadowBlur=8;
+  cx.beginPath();cx.moveTo(px+TILE/2,py+TILE-4);
+  cx.bezierCurveTo(px+TILE/2+sw,py+TILE-h*.5,px+TILE/2+sw*2,py+TILE-h*.8,px+TILE/2+sw*3,py+TILE-h);cx.stroke();cx.shadowBlur=0;
+  cx.fillStyle=hue;cx.shadowColor=hue;cx.shadowBlur=10;
+  cx.beginPath();cx.arc(px+TILE/2+sw*3,py+TILE-h,3.5,0,Math.PI*2);cx.fill();cx.shadowBlur=0;
 }
 
-function drawFlora(px,py,tx,ty){
-  drawGround(px,py,tx,ty);
-  const phase=frame*0.035+rng2d(tx,ty)*6.28,sw=Math.sin(phase)*2.5;
-  const h=10+rng2d(tx*7,ty*3)*14;
-  const hue=rng2d(tx+100,ty*3)>0.5?'#00ff88':'#ff44aa';
-  ctx.strokeStyle=hue; ctx.lineWidth=2; ctx.shadowColor=hue; ctx.shadowBlur=8;
-  ctx.beginPath();
-  ctx.moveTo(px+TILE/2,py+TILE-4);
-  ctx.bezierCurveTo(px+TILE/2+sw,py+TILE-h*0.5,px+TILE/2+sw*2,py+TILE-h*0.8,px+TILE/2+sw*3,py+TILE-h);
-  ctx.stroke(); ctx.shadowBlur=0;
-  ctx.fillStyle=hue; ctx.shadowColor=hue; ctx.shadowBlur=10;
-  ctx.beginPath(); ctx.arc(px+TILE/2+sw*3,py+TILE-h,3.5,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
-}
-
-// ════════════════════════════════════════
-//  RENDER RESOURCES
-// ════════════════════════════════════════
-
-function renderResources(){
-  for(const r of world.resources){
-    if(r.amount<=0) continue;
-    const scrx=r.x-cam.x,scry=r.y-cam.y;
-    if(scrx<-50||scrx>CVW+50||scry<-50||scry>CVH+50) continue;
-    const pd=RESData[r.type],pulse=Math.sin(frame*0.05+r.id)*0.3+0.7,sz=(0.7+(r.amount/r.maxAmount)*0.6)*9;
-    ctx.save(); ctx.shadowColor=pd.c; ctx.shadowBlur=14*pulse;
-    for(let i=0;i<r.amount;i++){
-      const ang=(i/r.amount)*Math.PI*2,cx2=r.x+Math.cos(ang)*(sz*0.8),cy2=r.y+Math.sin(ang)*(sz*0.8);
-      drawCrystal(cx2,cy2,sz*0.55,pd.c,ang+frame*0.015);
-    }
-    drawCrystal(r.x,r.y,sz,pd.c,frame*0.022*(r.type%2?1:-1));
-    if(player.miningTarget===r&&player.mineProgress>0){
-      const bw=38;
-      ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(r.x-bw/2,r.y-24,bw,5);
-      ctx.fillStyle=pd.c; ctx.shadowBlur=8;
-      ctx.fillRect(r.x-bw/2,r.y-24,bw*player.mineProgress,5);
-    }
-    ctx.restore();
+function rRes(){
+  for(const r of W.res){
+    if(r.amount<=0)continue;
+    if(r.x-cam.x<-50||r.x-cam.x>CVW+50||r.y-cam.y<-50||r.y-cam.y>CVH+50)continue;
+    const rd=RES[r.type],pulse=Math.sin(fr*0.05+r.id)*.3+.7,sz=(0.7+(r.amount/r.maxAmount)*.6)*9;
+    cx.save();cx.shadowColor=rd.c;cx.shadowBlur=14*pulse;
+    for(let i=0;i<r.amount;i++){const a=(i/r.amount)*Math.PI*2;drawCrystal(r.x+Math.cos(a)*sz*.8,r.y+Math.sin(a)*sz*.8,sz*.55,rd.c,a+fr*0.015)}
+    drawCrystal(r.x,r.y,sz,rd.c,fr*0.022*(r.type%2?1:-1));
+    if(P.mt===r&&P.mp>0){cx.fillStyle='rgba(0,0,0,0.55)';cx.fillRect(r.x-19,r.y-24,38,5);cx.fillStyle=rd.c;cx.fillRect(r.x-19,r.y-24,38*P.mp,5)}
+    cx.restore();
   }
 }
 
 function drawCrystal(x,y,s,col,angle){
-  ctx.save(); ctx.translate(x,y); ctx.rotate(angle); ctx.fillStyle=col;
-  ctx.beginPath(); ctx.moveTo(0,-s*1.5); ctx.lineTo(s*0.48,0); ctx.lineTo(0,s*0.7); ctx.lineTo(-s*0.48,0); ctx.closePath(); ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,0.28)';
-  ctx.beginPath(); ctx.moveTo(0,-s*1.5); ctx.lineTo(s*0.14,-s*0.25); ctx.lineTo(0,-s*0.15); ctx.closePath(); ctx.fill();
-  ctx.restore();
+  cx.save();cx.translate(x,y);cx.rotate(angle);cx.fillStyle=col;
+  cx.beginPath();cx.moveTo(0,-s*1.5);cx.lineTo(s*.48,0);cx.lineTo(0,s*.7);cx.lineTo(-s*.48,0);cx.closePath();cx.fill();
+  cx.fillStyle='rgba(255,255,255,0.25)';cx.beginPath();cx.moveTo(0,-s*1.5);cx.lineTo(s*.14,-s*.25);cx.lineTo(0,-s*.15);cx.closePath();cx.fill();
+  cx.restore();
 }
 
-// ════════════════════════════════════════
-//  RENDER STRUCTURES
-// ════════════════════════════════════════
-
-function renderStructures(){
-  for(const s of world.structures){
+function rStructs(){
+  for(const s of W.structs){
     const rx=s.wx-cam.x,ry=s.wy-cam.y;
-    if(rx+s.w<0||rx>CVW||ry+s.h<0||ry>CVH) continue;
-    ctx.save();
-    if(s.type===0) renderHabitat(s);
-    else if(s.type===1) renderSolar(s);
-    else {
-      const sd=STRUCT[s.type];
-      ctx.fillStyle='#141424'; ctx.fillRect(s.wx+3,s.wy+3,s.w-6,s.h-6);
-      ctx.strokeStyle=sd.col; ctx.lineWidth=2; ctx.shadowColor=sd.col; ctx.shadowBlur=8;
-      ctx.strokeRect(s.wx+3,s.wy+3,s.w-6,s.h-6); ctx.shadowBlur=0;
-      ctx.fillStyle=sd.col; ctx.font='bold 10px Courier New'; ctx.textAlign='center';
-      ctx.fillText(sd.name.toUpperCase(),s.wx+s.w/2,s.wy+s.h/2+4);
+    if(rx+s.w<0||rx>CVW||ry+s.h<0||ry>CVH)continue;
+    cx.save();
+    if(s.type===0){
+      cx.fillStyle='#08122a';cx.fillRect(s.wx+4,s.wy+s.h/2,s.w-8,s.h/2-4);
+      cx.fillStyle='#162a52';cx.beginPath();cx.ellipse(s.wx+s.w/2,s.wy+s.h/2,s.w/2-3,s.h/2,0,Math.PI,0,true);cx.fill();
+      cx.fillStyle='rgba(80,170,255,0.10)';cx.beginPath();cx.ellipse(s.wx+s.w/2,s.wy+s.h/2,s.w/2-6,s.h/2-3,0,Math.PI,0,true);cx.fill();
+      const pl2=Math.sin(fr*.04)*.18+.82,gr=cx.createRadialGradient(s.wx+s.w/2,s.wy+s.h/2,0,s.wx+s.w/2,s.wy+s.h/2,170);
+      gr.addColorStop(0,`rgba(40,140,255,${.07*pl2})`);gr.addColorStop(1,'rgba(40,140,255,0)');
+      cx.fillStyle=gr;cx.beginPath();cx.arc(s.wx+s.w/2,s.wy+s.h/2,170,0,Math.PI*2);cx.fill();
+      cx.fillStyle='#2277ee';cx.shadowColor='#3388ff';cx.shadowBlur=10;cx.fillRect(s.wx+6,s.wy+s.h/2-2,s.w-12,4);cx.shadowBlur=0;
+      cx.fillStyle='#88ccff';cx.shadowColor='#88ccff';cx.shadowBlur=12;cx.beginPath();cx.arc(s.wx+s.w/2,s.wy+s.h/3,6,0,Math.PI*2);cx.fill();cx.shadowBlur=0;
+    }else if(s.type===1){
+      cx.fillStyle='#181820';cx.fillRect(s.wx+3,s.wy+3,s.w-6,s.h-6);
+      const br=Math.max(0,Math.sin((dc-.25)*Math.PI*2)*.7+.3)*(dc<.5?1:.1);
+      for(let r2=0;r2<2;r2++)for(let c2=0;c2<3){const B=br*220|0;cx.fillStyle=`rgb(${B*.35|0},${B*.28|0},${B})`;cx.fillRect(s.wx+5+c2*((s.w-10)/3),s.wy+4+r2*((s.h-8)/2),(s.w-10)/3-2,(s.h-8)/2-2)}
+      cx.strokeStyle='#ffee88';cx.lineWidth=1;cx.shadowColor='#ffee88';cx.shadowBlur=br*10;cx.strokeRect(s.wx+3,s.wy+3,s.w-6,s.h-6);cx.shadowBlur=0;
+    }else{
+      const sd=ST[s.type];cx.fillStyle='#141424';cx.fillRect(s.wx+3,s.wy+3,s.w-6,s.h-6);
+      cx.strokeStyle=sd.c;cx.lineWidth=2;cx.shadowColor=sd.c;cx.shadowBlur=8;cx.strokeRect(s.wx+3,s.wy+3,s.w-6,s.h-6);cx.shadowBlur=0;
+      cx.fillStyle=sd.c;cx.font='bold 10px Courier New';cx.textAlign='center';cx.fillText(sd.n.toUpperCase(),s.wx+s.w/2,s.wy+s.h/2+4);
     }
-    ctx.restore();
+    cx.restore();
   }
 }
 
-function renderHabitat(s){
-  ctx.fillStyle='#08122a'; ctx.fillRect(s.wx+4,s.wy+s.h/2,s.w-8,s.h/2-4);
-  ctx.fillStyle='#162a52'; ctx.beginPath();
-  ctx.ellipse(s.wx+s.w/2,s.wy+s.h/2,s.w/2-3,s.h/2,0,Math.PI,0,true); ctx.fill();
-  ctx.fillStyle='rgba(80,170,255,0.12)'; ctx.beginPath();
-  ctx.ellipse(s.wx+s.w/2,s.wy+s.h/2,s.w/2-6,s.h/2-3,0,Math.PI,0,true); ctx.fill();
-  const pulse=Math.sin(frame*0.04)*0.18+0.82;
-  const grad=ctx.createRadialGradient(s.wx+s.w/2,s.wy+s.h/2,0,s.wx+s.w/2,s.wy+s.h/2,170);
-  grad.addColorStop(0,`rgba(40,140,255,${0.07*pulse})`); grad.addColorStop(1,'rgba(40,140,255,0)');
-  ctx.fillStyle=grad; ctx.beginPath(); ctx.arc(s.wx+s.w/2,s.wy+s.h/2,170,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#2277ee'; ctx.shadowColor='#3388ff'; ctx.shadowBlur=10;
-  ctx.fillRect(s.wx+6,s.wy+s.h/2-2,s.w-12,4); ctx.shadowBlur=0;
-  ctx.fillStyle='#88ccff'; ctx.shadowColor='#88ccff'; ctx.shadowBlur=12;
-  ctx.beginPath(); ctx.arc(s.wx+s.w/2,s.wy+s.h/3,6,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
+function rPlayer(){
+  if(!P.alive)return;
+  const lg=Math.sin(P.wa)*5;
+  cx.save();cx.translate(P.x,P.y);if(P.fc===-1)cx.scale(-1,1);
+  cx.shadowColor='#88aaff';cx.shadowBlur=12;
+  if(Math.abs(P.vx)+Math.abs(P.vy)>20){cx.fillStyle='rgba(100,150,255,0.3)';cx.beginPath();cx.arc(7,5,6,0,Math.PI*2);cx.fill()}
+  cx.fillStyle='#4a5580';cx.fillRect(-8,8,6,10+lg);cx.fillRect(2,8,6,10-lg);
+  cx.fillStyle='#c8962c';cx.fillRect(-9,-8,18,18);cx.fillStyle='#aa7c1e';cx.fillRect(-7,-4,6,8);cx.fillRect(4,-4,6,8);
+  cx.fillStyle='#7a7a8c';cx.fillRect(7,-7,6,14);cx.fillStyle='#5588cc';cx.fillRect(8,-5,4,4);
+  cx.fillStyle='#c8962c';cx.beginPath();cx.arc(0,-12,10,0,Math.PI*2);cx.fill();cx.fillStyle='#aa7c1e';cx.fillRect(-7,-14,14,4);
+  const ok=P.o2/P.maxO2>0.3;cx.fillStyle=ok?'#22ccee':'#ff3300';cx.shadowColor=ok?'#22ccee':'#ff3300';cx.shadowBlur=14;
+  cx.beginPath();cx.arc(2,-13,6.5,-.35,Math.PI+.35);cx.fill();
+  cx.fillStyle='rgba(255,255,255,0.3)';cx.beginPath();cx.arc(-1,-15,2.5,0,Math.PI*2);cx.fill();
+  cx.fillStyle='#b88820';cx.shadowBlur=0;
+  const sw2=Math.sin(P.wa+Math.PI)*5;cx.fillRect(-15,-5+sw2,7,13);cx.fillRect(8,-5-sw2,7,13);
+  cx.restore();
 }
 
-function renderSolar(s){
-  ctx.fillStyle='#181820'; ctx.fillRect(s.wx+3,s.wy+3,s.w-6,s.h-6);
-  const brightness=Math.max(0,Math.sin((dayCycle-0.25)*Math.PI*2)*0.7+0.3)*(dayCycle<0.5?1:0.1);
-  const cols=3,rows=2,cw=(s.w-10)/cols,ch=(s.h-8)/rows;
-  for(let r=0;r<rows;r++) for(let c=0;c<cols;c++){
-    const B=Math.floor(brightness*220);
-    ctx.fillStyle=`rgb(${B*0.35|0},${B*0.28|0},${B})`;
-    ctx.fillRect(s.wx+5+c*cw,s.wy+4+r*ch,cw-2,ch-2);
-  }
-  ctx.strokeStyle='#ffee88'; ctx.lineWidth=1; ctx.shadowColor='#ffee88'; ctx.shadowBlur=brightness*10;
-  ctx.strokeRect(s.wx+3,s.wy+3,s.w-6,s.h-6); ctx.shadowBlur=0;
-}
+function rParts(){for(const p of W.parts){const t2=p.life/p.ml;cx.save();cx.globalAlpha=t2;cx.fillStyle=p.color;cx.shadowColor=p.color;cx.shadowBlur=7;cx.beginPath();cx.arc(p.x,p.y,p.sz*t2,0,Math.PI*2);cx.fill();cx.restore()}}
 
-// ════════════════════════════════════════
-//  RENDER PLAYER
-// ════════════════════════════════════════
-
-function renderPlayer(){
-  if(!player.alive) return;
-  const leg=Math.sin(player.walkAnim)*5;
-  ctx.save(); ctx.translate(player.x,player.y);
-  if(player.facing===-1)ctx.scale(-1,1);
-  ctx.shadowColor='#88aaff'; ctx.shadowBlur=12;
-  if(Math.abs(player.vx)+Math.abs(player.vy)>20){
-    ctx.fillStyle='rgba(100,150,255,0.3)';
-    ctx.beginPath(); ctx.arc(7,5,6,0,Math.PI*2); ctx.fill();
-  }
-  ctx.fillStyle='#4a5580'; ctx.fillRect(-8,8,6,10+leg); ctx.fillRect(2,8,6,10-leg);
-  ctx.fillStyle='#c8962c'; ctx.fillRect(-9,-8,18,18);
-  ctx.fillStyle='#aa7c1e'; ctx.fillRect(-7,-4,6,8); ctx.fillRect(4,-4,6,8);
-  ctx.fillStyle='#7a7a8c'; ctx.fillRect(7,-7,6,14);
-  ctx.fillStyle='#5588cc'; ctx.fillRect(8,-5,4,4);
-  ctx.fillStyle='#c8962c'; ctx.beginPath(); ctx.arc(0,-12,10,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#aa7c1e'; ctx.fillRect(-7,-14,14,4);
-  const o2ok=player.o2/player.maxO2>0.3;
-  ctx.fillStyle=o2ok?'#22ccee':'#ff3300';
-  ctx.shadowColor=o2ok?'#22ccee':'#ff3300'; ctx.shadowBlur=14;
-  ctx.beginPath(); ctx.arc(2,-13,6.5,-0.35,Math.PI+0.35); ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,0.3)';
-  ctx.beginPath(); ctx.arc(-1,-15,2.5,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='#b88820'; ctx.shadowBlur=0;
-  const sw=Math.sin(player.walkAnim+Math.PI)*5;
-  ctx.fillRect(-15,-5+sw,7,13); ctx.fillRect(8,-5-sw,7,13);
-  ctx.restore();
-}
-
-// ════════════════════════════════════════
-//  RENDER PARTICLES
-// ════════════════════════════════════════
-
-function renderParts(){
-  for(const p of world.particles){
-    const t=p.life/p.maxLife;
-    ctx.save(); ctx.globalAlpha=t; ctx.fillStyle=p.color;
-    ctx.shadowColor=p.color; ctx.shadowBlur=7;
-    ctx.beginPath(); ctx.arc(p.x,p.y,p.size*t,0,Math.PI*2); ctx.fill();
-    ctx.restore();
-  }
-}
-
-// ════════════════════════════════════════
-//  RENDER BUILD GHOST (placement mode)
-// ══════════════════════════════════════════
-
-function renderBuildGhost(){
-  const tx=Math.floor(mouse.wx/TILE),ty=Math.floor(mouse.wy/TILE);
-  const valid=canPlace(buildMode,tx,ty)&&canAfford(buildMode);
-  const sd=STRUCT[buildMode];
-  ctx.save(); ctx.globalAlpha=0.52;
-  ctx.fillStyle=valid?sd.col+'44':'#ff000033';
-  ctx.strokeStyle=valid?sd.col:'#ff4444'; ctx.lineWidth=2;
-  ctx.fillRect(tx*TILE,ty*TILE,sd.w*TILE,sd.h*TILE);
-  ctx.strokeRect(tx*TILE,ty*TILE,sd.w*TILE,sd.h*TILE);
-  ctx.restore();
+function rGhost(){
+  const tx=Math.floor(ms.wx/TILE),ty=Math.floor(ms.wy/TILE);
+  const ok=canPlace(bmode,tx,ty)&&canAfford(bmode);
+  const sd=ST[bmode];cx.save();cx.globalAlpha=.52;cx.fillStyle=ok?sd.c+'44':'#ff000033';cx.strokeStyle=ok?sd.c:'#ff4444';cx.lineWidth=2;
+  cx.fillRect(tx*TILE,ty*TILE,sd.w*TILE,sd.h*TILE);cx.strokeRect(tx*TILE,ty*TILE,sd.w*TILE,sd.h*TILE);cx.restore();
 }
 
 // ════════════════════════════════════════
 //  HUD
-// ════════════════════════════════════════
-
-function renderHUD(){
+// ════════════════════════════════════════════
+function rHUD(){
   // Top bar
-  ctx.fillStyle='rgba(2,0,10,0.78)'; ctx.fillRect(0,0,CVW,52);
+  cx.fillStyle='rgba(2,0,10,0.78)';cx.fillRect(0,0,CVW,50);
+  bar2(16,12,190,14,P.o2/P.maxO2,'#0088cc','#00ccff','O²');
+  bar2(222,12,190,14,P.health/P.maxHealth,'#880022','#ff2244','HP');
 
-  // O2 + HP bars
-  bar(18,13,200,16,player.o2/player.maxO2,'#0088cc','#00ccff','O²');
-  bar(235,13,200,16,player.health/player.maxHealth,'#880022','#ff2244','HP');
+  // Day orb
+  const dn=dc<0.5;cx.save();cx.shadowColor=dn?'#ffdd44':'#6677ff';cx.shadowBlur=14;cx.fillStyle=dn?'#ffdd44':'#8899ff';
+  cx.beginPath();cx.arc(CVW/2+Math.cos(dc*Math.PI*2-Math.PI/2)*15,24+Math.sin(dc*Math.PI*2-Math.PI/2)*8,dn?5:4,0,Math.PI*2);cx.fill();cx.restore();
+  cx.fillStyle='#404660';cx.font='9px Courier New';cx.textAlign='center';cx.fillText(dn?'DIA':'NOITE',CVW/2,44);
+  cx.strokeStyle='rgba(60,60,100,0.4)';cx.lineWidth=1.2;cx.beginPath();cx.arc(CVW/2,24,15,0,Math.PI*2);cx.stroke();
 
-  // Day/night orb
-  const dn=dayCycle<0.5;
-  ctx.save(); ctx.shadowColor=dn?'#ffdd44':'#6677ff'; ctx.shadowBlur=14;
-  ctx.fillStyle=dn?'#ffdd44':'#8899ff';
-  ctx.beginPath(); ctx.arc(CVW/2+Math.cos(dayCycle*Math.PI*2-Math.PI/2)*15,26+Math.sin(dayCycle*Math.PI*2-Math.PI/2)*8,dn?6:4.5,0,Math.PI*2); ctx.fill();
-  ctx.restore(); ctx.fillStyle='#404060'; ctx.font='9px Courier New'; ctx.textAlign='center';
-  ctx.fillText(dn?'DIA':'NOITE',CVW/2,46);
-  ctx.strokeStyle='rgba(60,60,100,0.4)'; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.arc(CVW/2,26,16,0,Math.PI*2); ctx.stroke();
+  // Right side
+  cx.textAlign='right';cx.fillStyle='#303050';cx.font='10px Courier New';
+  cx.fillText(`${Math.floor(P.st)}s`,CVW-14,18);
+  cx.fillText(`Score ${P.score}`,CVW-14,32);
+  cx.fillText(`Inv: ${P.inv.reduce((a,b)=>a+b,0)}`,CVW-14,46);
 
-  // Right side — time + score
-  ctx.fillStyle='#303050'; ctx.font='10px Courier New'; ctx.textAlign='right';
-  ctx.fillText(`${Math.floor(player.survivalTime)}s`,CVW-12,19);
-  ctx.fillText(`Score: ${player.score}`,CVW-12,34);
-  ctx.fillText(`Res: ${player.inv.reduce((a,b)=>a+b,0)}`,CVW-12,46);
+  // Bottom bar
+  cx.fillStyle='rgba(2,0,10,0.78)';cx.fillRect(0,CVH-30,CVW,30);
+  cx.fillStyle='#304050';cx.font='10px Courier New';cx.textAlign='center';
+  cx.fillText('[ B ] Construir  ·  [ I ] Inventário  ·  [ R ] Pesquisa  ·  [ E ] Minerar',CVW/2,CVH-10);
 
-  // ─── BOTTOM BAR ───
-
-  ctx.fillStyle='rgba(2,0,10,0.78)'; ctx.fillRect(0,CVH-32,CVW,32);
-  ctx.strokeStyle='#14142a'; ctx.lineWidth=1;
-  ctx.strokeRect(0,CVH-32,CVW-1,31);
-
-  ctx.fillStyle='#303050'; ctx.font='10px Courier New'; ctx.textAlign='center';
-  ctx.fillText('[ B ] Construir  ·  [ I ] Inventário  ·  [ R ] Pesquisa  ·  [ E ] Minerar',CVW/2,CVH-11);
-
-  // Build placement mode hint
-  if(buildMode!==null){
-    const sd=STRUCT[buildMode];
-    ctx.fillStyle='rgba(2,0,10,0.92)'; ctx.fillRect(0,52,CVW,36);
-    ctx.strokeStyle='#334499'; ctx.lineWidth=1; ctx.strokeRect(0,54,CVW-1,33);
-    ctx.fillStyle=sd.col; ctx.shadowColor=sd.col; ctx.shadowBlur=10;
-    ctx.font='bold 11px Courier New'; ctx.textAlign='center';
-    const costTxt=Object.entries(sd.cst).map(([k,v])=>`${v} ${RES[+k].name}`).join(' + ');
-    ctx.fillText(`${sd.name.toUpperCase()} — CLIQUE PARA POSICIONAR  |  ESC CANCELAR  |  Custo: ${costTxt}`,CVW/2,75);
-    ctx.shadowBlur=0;
+  // Build placement hint
+  if(bmode!==null){
+    cx.fillStyle='rgba(2,0,10,0.92)';cx.fillRect(60,50,CVW-120,34);
+    cx.strokeStyle='#334499';cx.lineWidth=1;cx.strokeRect(60,50,CVW-120,34);
+    const sd=ST[bmode];cx.fillStyle=sd.c;cx.shadowColor=sd.c;cx.shadowBlur=10;
+    cx.font='bold 11px Courier New';cx.textAlign='center';
+    const ct=Object.entries(sd.cs).map(([k,v])=>`${v} ${RES[+k].n}`).join(' + ');
+    cx.fillText(`${sd.n.toUpperCase()} — CLIQUE PARA POSICIONAR  |  ESC CANCELAR  |  Custo: ${ct}`,CVW/2,72);cx.shadowBlur=0;
   }
 
   // Mining hint
-  const closeR=world.resources?world.resources.find(r=>r.amount>0&&Math.hypot(player.x-r.x,player.y-r.y)<75):null;
-  if(closeR&&!buildMode){
-    const rd=RESData[closeR.type];
-    ctx.fillStyle=rd.c; ctx.shadowColor=rd.c; ctx.shadowBlur=12;
-    ctx.font='11px Courier New'; ctx.textAlign='center';
-    ctx.fillText(`[ E ] Minerar ${rd.name} (×${closeR.amount})`,CVW/2,CVH-46);
-    ctx.shadowBlur=0;
-  }
+  const cr=W.res?W.res.find(r=>r.amount>0&&Math.hypot(P.x-r.x,P.y-r.y)<75):null;
+  if(cr&&!bmode){const rd=RES[cr.type];cx.fillStyle=rd.c;cx.shadowColor=rd.c;cx.shadowBlur=10;cx.font='11px Courier New';cx.textAlign='center';cx.fillText(`[ E ] Minerar ${rd.n} (×${cr.amount})`,CVW/2,CVH-46);cx.shadowBlur=0}
 
-  // Low O2 warning
-  if(player.o2<20&&player.alive){
-    if(Math.sin(frame*0.22)>0){
-      ctx.fillStyle='rgba(255,40,0,0.12)'; ctx.fillRect(0,0,CVW,CVH);
-      ctx.fillStyle='#ff3300'; ctx.shadowColor='#ff3300'; ctx.shadowBlur=22;
-      ctx.font='bold 14px Courier New'; ctx.textAlign='center';
-      ctx.fillText('⚠  OXIGÊNIO CRÍTICO — RETORNE AO HABITAT',CVW/2,CVH/2-30);
-      ctx.shadowBlur=0;
-    }
-  }
+  // Low O2
+  if(P.o2<20&&P.alive&&Math.sin(fr*0.22)>0){cx.fillStyle='rgba(255,40,0,0.12)';cx.fillRect(0,0,CVW,CVH);cx.fillStyle='#ff3300';cx.shadowColor='#ff3300';cx.shadowBlur=22;cx.font='bold 14px Courier New';cx.textAlign='center';cx.fillText('⚠  OXIGÊNIO CRÍTICO — VOLTE AO HABITAT',CVW/2,CVH/2-30);cx.shadowBlur=0}
 
   // Minimap
-  renderMinimap();
+  rMini();
 }
 
-function bar(x,y,w,h,pct,bgc,fgc,label){
-  ctx.fillStyle='rgba(0,0,15,0.7)'; ctx.fillRect(x,y,w,h);
-  ctx.fillStyle=bgc; ctx.fillRect(x+1,y+1,(w-2)*Math.max(0,pct),h-2);
-  ctx.strokeStyle=fgc; ctx.lineWidth=1;
-  ctx.shadowColor=pct<0.25?fgc:'transparent'; ctx.shadowBlur=pct<0.25?10:0;
-  ctx.strokeRect(x,y,w,h); ctx.shadowBlur=0;
-  ctx.fillStyle='#5a5a7a'; ctx.font='9px Courier New'; ctx.textAlign='left';
-  ctx.fillText(label,x+4,y+h+11);
+function bar2(x,y,w,h,pct,bg,fg,lb){
+  cx.fillStyle='rgba(10,5,20,0.7)';cx.fillRect(x,y,w,h);cx.fillStyle=bg;cx.fillRect(x+1,y+1,(w-2)*Math.max(0,pct),h-2);
+  cx.strokeStyle=fg;cx.lineWidth=1;cx.shadowColor=pct<0.25?fg:'transparent';cx.shadowBlur=pct<0.25?8:0;cx.strokeRect(x,y,w,h);cx.shadowBlur=0;
+  cx.fillStyle='#5a5a7a';cx.font='8px Courier New';cx.textAlign='left';cx.fillText(lb,x+4,y+h+9);
 }
 
-function renderMinimap(){
-  const mmx=CVW-96,mmy=58,mmw=86,mmh=64;
-  ctx.fillStyle='rgba(0,0,12,0.85)'; ctx.fillRect(mmx,mmy,mmw,mmh);
-  ctx.strokeStyle='#223355'; ctx.lineWidth=1; ctx.strokeRect(mmx,mmy,mmw,mmh);
-
-  const sc=mmw/Math.max(COLS,Math.ceil(WW/TILE));
-  // Resources (small dots)
-  if(world.resources) for(const r of world.resources){
-    if(r.amount<=0) continue;
-    const rx=mmx+(r.x/TILE)*sc,ry=mmy+(r.y/(TILE*ROWS/COLS))*sc*COLS/ROWS;
-    ctx.fillStyle=RESData[r.type].c+'88';
-    ctx.fillRect(rx,ry,1.2,1.2);
-  }
-  // Structures
-  if(world.structures) for(const s of world.structures){
-    ctx.fillStyle=STRUCTData[s.type].col;
-    ctx.fillRect(mmx+s.tx*sc,mmy+s.ty*sc*Math.min(mmh/ROWS,mmw/COLS)/sc,s.w/TILE*sc+1,s.h/TILE*sc+1);
-  }
-  // Player
-  if(player.alive){
-    const px=mmx+(player.x/TILE)*sc,py=mmy+(player.y/TILE)*sc*ROWS/COLS*(mmw/mmh);
-    ctx.fillStyle='#ffffff'; ctx.shadowColor='#ffffff'; ctx.shadowBlur=5;
-    ctx.beginPath(); ctx.arc(px,py,2,0,Math.PI*2); ctx.fill(); ctx.shadowBlur=0;
-  }
-}
-
-// Simple minimap: uniform scale
-function renderMinimap(){
-  const mmx=CVW-100,mmy=56,mmw=92,mmh=68;
-  const sc=mmw/COLS,sh=mmh/ROWS;
-  ctx.fillStyle='rgba(0,0,12,0.85)'; ctx.fillRect(mmx,mmy,mmw,mmh);
-  ctx.strokeStyle='#223355'; ctx.lineWidth=1; ctx.strokeRect(mmx,mmy,mmw,mmh);
-
-  // Resources
-  for(const r of world.resources){
-    if(r.amount<=0) continue;
-    const rx=mmx+(r.x/TILE)*sc,ry=mmy+(r.y/TILE)*sh;
-    ctx.fillStyle=RESData[r.type].c+'88';
-    ctx.fillRect(rx,ry,1.2,1.2);
-  }
-  // Structures
-  for(const s of world.structures){
-    ctx.fillStyle=STRUCTData[s.type].col;
-    ctx.fillRect(mmx+s.tx*sc,mmy+s.ty*sh,s.w/TILE*sc+1,s.h/TILE*sh+1);
-  }
-  // Player
-  const px=mmx+(player.x/TILE)*sc,py=mmy+(player.y/TILE)*sh;
-  ctx.fillStyle='#ffffff'; ctx.shadowColor='#ffffff'; ctx.shadowBlur=5;
-  ctx.beginPath(); ctx.arc(Math.min(mmx+mmw-2,Math.max(mmx+2,px)),Math.min(mmy+mmh-2,Math.max(mmy+2,py)),2,0,Math.PI*2); ctx.fill();
-  ctx.shadowBlur=0;
-}
+function rMini(){
+  const mx=CVW-108,my=54,mw=100,mh=80;
+  const sx=mw/COLS,sy=mh/ROWS;
+  cx.fillStyle='rgba(0,0,12,0.85)';cx.fillRect(mx,my,mw,mh);cx.strokeStyle='#223355';cx.lineWidth=1;cx.strokeRect(mx,my,mw,mh);
+  for(const r of W.res){if(r.amount<=0)continue;cx.fillStyle=RES[r.type].c+'88';cx.fillRect(mx+(r.x/TILE)*sx-1,my+(r.y/TILE)*sy-1,1.5,1.5)}
+  for(const s of W.structs){cx.fillStyle=ST[s.type].c;cx.fillRect(mx+s.tx*sx,my+s.ty*sy,s.w/TILE*sx+1,s.h/TILE*sy+1)}
+  const px=mx+(P.x/TILE)*sx,py=my+(P.y/TILE)*sy;
+  cx.fillStyle='#fff';cx.shadowColor='#fff';cx.shadowBlur=5;
