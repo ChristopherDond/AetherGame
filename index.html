@@ -12,6 +12,7 @@
   <h1>AETHER</h1>
   <p>Sua nave caiu num planeta alienigena desconhecido.<br>Minere recursos · Construa sua base · Sobreviva.<br><br><span class="controls-inline">WASD/SETAS - MOVER | E - MINERAR | B - CONSTRUIR | I - INVENTARIO | R - PESQUISA | P - PAUSA</span></p>
   <button class="btn" onclick="startGame()">▶ INICIAR MISSAO</button>
+  <button id="btn-continue" class="btn" onclick="loadGame()" style="display:none">▶ CONTINUAR</button>
 </div>
 
 <div id="s-over" class="screen">
@@ -35,6 +36,23 @@
 <div id="p-res" class="pov"><div class="bd" onclick="cp('res')"></div><div class="pnl"><div class="ph"><h2>PESQUISA</h2><button class="pc" onclick="cp('res')">✕</button></div><div class="pb" id="rbody"></div></div></div></div>
 
 <canvas id="c"></canvas>
+<div id="touch-controls" class="touch-controls" aria-hidden="true">
+  <div class="touch-cluster touch-move">
+    <button class="touch-btn" data-key="KeyW" data-hold="true">▲</button>
+    <div class="touch-row">
+      <button class="touch-btn" data-key="KeyA" data-hold="true">◀</button>
+      <button class="touch-btn" data-key="KeyS" data-hold="true">▼</button>
+      <button class="touch-btn" data-key="KeyD" data-hold="true">▶</button>
+    </div>
+  </div>
+  <div class="touch-cluster touch-actions">
+    <button class="touch-btn primary" data-key="KeyE" data-hold="true">MINE</button>
+    <button class="touch-btn" data-key="KeyB">B</button>
+    <button class="touch-btn" data-key="KeyI">I</button>
+    <button class="touch-btn" data-key="KeyR">R</button>
+    <button class="touch-btn" data-key="KeyP">P</button>
+  </div>
+</div>
 <script type="module" src="js/game.js"></script>
 </body>
 </html>

@@ -14,6 +14,7 @@ body{
   height:100vh;
   overflow:hidden;
   user-select:none;
+  touch-action:none;
   font-family:'Courier New',monospace;
 }
 canvas{
@@ -116,15 +117,70 @@ canvas{
 .rs.miss{color:#556;border-color:#333}
 .rs.ok{color:#cc0;border-color:#cc0}
 
+.touch-controls{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:0;
+  display:none;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:16px;
+  padding:12px;
+  z-index:40;
+  pointer-events:none;
+}
+.touch-cluster{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  pointer-events:auto;
+}
+.touch-row{
+  display:flex;
+  gap:8px;
+  justify-content:center;
+}
+.touch-btn{
+  min-width:52px;
+  min-height:52px;
+  border-radius:12px;
+  border:1px solid #00e5ff55;
+  background:rgba(8,12,26,.72);
+  color:#dff9ff;
+  font-family:'Courier New',monospace;
+  font-size:.82rem;
+  letter-spacing:.08em;
+  box-shadow:0 0 24px rgba(0,229,255,.1);
+  backdrop-filter:blur(6px);
+  -webkit-tap-highlight-color:transparent;
+  touch-action:none;
+}
+.touch-btn:active,
+.touch-btn.active{
+  background:rgba(0,229,255,.18);
+  border-color:#00e5ff;
+  box-shadow:0 0 28px rgba(0,229,255,.28);
+}
+.touch-btn.primary{
+  min-width:68px;
+  min-height:68px;
+  color:#00e5ff;
+}
+
 @media (max-width: 820px){
   .pnl{min-width:92vw;max-width:92vw;max-height:88vh}
   .bg{grid-template-columns:1fr}
   .screen p{font-size:.74rem;line-height:1.7;letter-spacing:.08em}
   .btn{padding:.65em 1.3em;font-size:.82rem;letter-spacing:.12em}
+  .touch-controls{display:flex}
 }
 
 @media (max-width: 520px){
   .ph h2{font-size:.72rem;letter-spacing:.16em}
   .pb{padding:10px}
   canvas{width:100vw;max-height:75vh}
+  .touch-controls{padding:8px;gap:10px}
+  .touch-btn{min-width:46px;min-height:46px;font-size:.74rem}
+  .touch-btn.primary{min-width:60px;min-height:60px}
 }

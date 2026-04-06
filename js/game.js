@@ -35,6 +35,175 @@ let ip = false;
 let rp = false;
 let inputReady = false;
 let ms = { x: 0, y: 0, wx: 0, wy: 0 };
+let saveAcc = 0;
+let touchControlReady = false;
+
+const SAVE_KEY = 'aether_save_v1';
+
+function resetResearch() {
+  for (const r of RSRCH) {
+    r.un = false;
+  }
+}
+
+function exportResearch() {
+  const unlocked = [];
+  for (const r of RSRCH) {
+    if (r.un) unlocked.push(r.id);
+  }
+  return unlocked;
+}
+
+function applyResearch(unlockedIds = []) {
+  resetResearch();
+  const set = new Set(unlockedIds);
+  for (const r of RSRCH) {
+    r.un = set.has(r.id);
+  }
+}
+
+function normalizePlayer(player) {
+  const base = {
+    x: WW / 2,
+    y: WH / 2,
+    vx: 0,
+    vy: 0,
+    w: 20,
+    h: 20,
+    spd: 130,
+    fc: 1,
+    wa: 0,
+    alive: true,
+    st: 0,
+    score: 0,
+    inv: new Array(RES.length).fill(0),
+    maxInv: 30,
+    maxO2: 100,
+    o2: 100,
+    maxHealth: 100,
+    health: 100,
+    msm: 1,
+    nhab: false,
+    mt: null,
+    mp: 0
+  };
+  const p = { ...base, ...(player || {}) };
+  if (!Array.isArray(p.inv) || p.inv.length !== RES.length) {
+    p.inv = new Array(RES.length).fill(0);
+  }
+  return p;
+}
+
+function saveGame() {
+  try {
+    if (!W.tiles || !P.inv) return;
+    const payload = {
+      version: 1,
+      gt,
+      dc,
+      fr,
+      world: {
+        seed: W.seed || 0,
+        tiles: Array.from(W.tiles || []),
+        res: W.res || [],
+        structs: W.structs || []
+      },
+      player: { ...P, mt: null, mp: 0 },
+      research: exportResearch()
+    };
+    localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
+    refreshContinueButton();
+  } catch (_err) {
+    // Silent fail keeps gameplay uninterrupted when storage is blocked.
+  }
+}
+
+function loadGame() {
+  try {
+    const raw = localStorage.getItem(SAVE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    startGame(parsed);
+  } catch (_err) {
+    // Ignore invalid save payloads and keep menu available.
+  }
+}
+
+function refreshContinueButton() {
+  const btn = document.getElementById('btn-continue');
+  if (!btn) return;
+  btn.style.display = localStorage.getItem(SAVE_KEY) ? 'inline-block' : 'none';
+}
+
+function setKeyState(code, pressed) {
+  keys[code] = pressed;
+}
+
+function closePanels() {
+  cp('build');
+  cp('inv');
+  cp('res');
+  bmode = null;
+}
+
+function initTouchControls() {
+  if (touchControlReady) return;
+  touchControlReady = true;
+  const container = document.getElementById('touch-controls');
+  if (!container) return;
+  const buttons = container.querySelectorAll('[data-key]');
+  for (const button of buttons) {
+    const code = button.getAttribute('data-key');
+    const hold = button.getAttribute('data-hold') === 'true';
+    const press = () => {
+      button.classList.add('active');
+      if (code === 'KeyB') {
+        if (run && !pau) op('build');
+        return;
+      }
+      if (code === 'KeyI') {
+        if (run && !pau) op('inv');
+        return;
+      }
+      if (code === 'KeyR') {
+        if (run && !pau) op('res');
+        return;
+      }
+      if (code === 'KeyP') {
+        if (run) togglePause();
+        return;
+      }
+      setKeyState(code, true);
+      if (!hold) {
+        setTimeout(() => {
+          setKeyState(code, false);
+          button.classList.remove('active');
+        }, 120);
+      }
+    };
+    const release = () => {
+      if (hold) setKeyState(code, false);
+      button.classList.remove('active');
+    };
+    button.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      button.setPointerCapture?.(e.pointerId);
+      press();
+    });
+    button.addEventListener('pointerup', (e) => {
+      e.preventDefault();
+      release();
+    });
+    button.addEventListener('pointercancel', release);
+    button.addEventListener('pointerleave', release);
+  }
+  window.addEventListener('blur', () => {
+    for (const key of ['KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE']) {
+      keys[key] = false;
+    }
+    for (const button of buttons) button.classList.remove('active');
+  });
+}
 
 function placeStruct(tp, tx, ty) {
   const sd = ST[tp];
@@ -191,61 +360,55 @@ function togglePause() {
   if (!run) return;
   pau = !pau;
   document.getElementById('s-pause').style.display = pau ? 'flex' : 'none';
+  if (pau) saveGame();
   if (!pau) {
     lt = performance.now();
     requestAnimationFrame(loop);
   }
 }
 
-function startGame() {
+function startGame(savedState = null) {
   cv = document.getElementById('c');
   cx = cv.getContext('2d');
   cv.width = CVW;
   cv.height = CVH;
 
-  const worldData = genWorld();
-  W = {
-    seed: worldData.seed,
-    tiles: worldData.tiles,
-    res: [],
-    structs: [],
-    parts: []
-  };
-  W.res = spawnRes(W.tiles, seeded(999, W.seed) * 99999 | 0);
+  if (savedState && savedState.world && savedState.player) {
+    applyResearch(savedState.research || []);
+    W = {
+      seed: savedState.world.seed || 0,
+      tiles: Uint8Array.from(savedState.world.tiles || []),
+      res: savedState.world.res || [],
+      structs: savedState.world.structs || [],
+      parts: []
+    };
+    P = normalizePlayer(savedState.player);
+    gt = typeof savedState.gt === 'number' ? savedState.gt : 0;
+    dc = typeof savedState.dc === 'number' ? savedState.dc : 0;
+    fr = typeof savedState.fr === 'number' ? savedState.fr : 0;
+  } else {
+    resetResearch();
+    const worldData = genWorld();
+    W = {
+      seed: worldData.seed,
+      tiles: worldData.tiles,
+      res: [],
+      structs: [],
+      parts: []
+    };
+    W.res = spawnRes(W.tiles, seeded(999, W.seed) * 99999 | 0);
+    P = normalizePlayer();
+    gt = 0;
+    dc = 0;
+    fr = 0;
+  }
 
-  P = {
-    x: WW / 2,
-    y: WH / 2,
-    vx: 0,
-    vy: 0,
-    w: 20,
-    h: 20,
-    spd: 130,
-    fc: 1,
-    wa: 0,
-    alive: true,
-    st: 0,
-    score: 0,
-    inv: new Array(RES.length).fill(0),
-    maxInv: 30,
-    maxO2: 100,
-    o2: 100,
-    maxHealth: 100,
-    health: 100,
-    msm: 1,
-    nhab: false,
-    mt: null,
-    mp: 0
-  };
-
-  gt = 0;
-  dc = 0;
-  fr = 0;
   keys = {};
   bmode = null;
   bp = false;
   ip = false;
   rp = false;
+  saveAcc = 0;
   cp('build');
   cp('inv');
   cp('res');
@@ -265,15 +428,14 @@ function startGame() {
 }
 
 function showTitle() {
+  saveGame();
   run = false;
   pau = false;
-  bmode = null;
-  cp('build');
-  cp('inv');
-  cp('res');
+  closePanels();
   document.getElementById('s-pause').style.display = 'none';
   document.getElementById('s-over').style.display = 'none';
   document.getElementById('s-title').style.display = 'flex';
+  refreshContinueButton();
 }
 
 function loop(now) {
@@ -292,6 +454,10 @@ function loop(now) {
 function setupInput() {
   if (inputReady) return;
   inputReady = true;
+  initTouchControls();
+  window.addEventListener('beforeunload', () => {
+    if (run && P.alive) saveGame();
+  });
   window.addEventListener('keydown', (e) => {
     if (!run) return;
     keys[e.code] = true;
@@ -355,6 +521,11 @@ function setupInput() {
 function update(dt) {
   gt += dt;
   fr++;
+  saveAcc += dt;
+  if (saveAcc >= 10) {
+    saveGame();
+    saveAcc = 0;
+  }
   dc = (gt % DAY_PERIOD) / DAY_PERIOD;
   if (!bp && !ip && !rp) updatePlayer(dt);
   for (const p of W.parts) {
@@ -903,6 +1074,8 @@ function rMini() {
 
 function installGlobalHandlers() {
   window.startGame = startGame;
+  window.loadGame = loadGame;
+  window.saveGame = saveGame;
   window.showTitle = showTitle;
   window.togglePause = togglePause;
   window.cp = cp;
@@ -911,3 +1084,4 @@ function installGlobalHandlers() {
 }
 
 installGlobalHandlers();
+refreshContinueButton();
