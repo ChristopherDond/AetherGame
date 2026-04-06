@@ -82,7 +82,7 @@ canvas{display:block;cursor:crosshair}
   <h1>PAUSADO</h1>
   <p>Pressione <span style="color:#888">P</span> para continuar</p>
   <button class="btn" onclick="togglePause()">▶ CONTINUAR</button>
-  <button class="btn red" onclick="showTitle();paused=false;">↺ SAIR</button>
+  <button class="btn red" onclick="showTitle()">↺ SAIR</button>
 </div>
 
 <!-- Build Panel -->
@@ -152,6 +152,7 @@ let gt=0,dc=0,fr=0,run=false,pau=false,lt=0;
 let bmode=null;
 // Panel state
 let bp=false,ip=false,rp=false;
+let inputReady=false;
 
 // ════════════════════════════════════════
 //  WORLD GEN
@@ -160,7 +161,7 @@ function genWorld(){
   const seed=Math.floor(Math.random()*99999);
   const tiles=new Uint8Array(COLS*ROWS);
   for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
-    const n=seeded(x*99+y*77,seed)*0.7+seeded(x*25+yy*51,seed)*0.3;
+    const n=seeded(x*99+y*77,seed)*0.7+seeded(x*25+y*51,seed)*0.3;
     tiles[y*COLS+x]=n>.75?T.ROCK:n>.67?T.DEEP:n<.22?T.SAND:seeded(x*71+y*37,seed)>.93?T.FLORA:T.GROUND;
   }
   const mx=Math.floor(COLS/2),my=Math.floor(ROWS/2);
@@ -323,12 +324,87 @@ function togglePause(){
   if(!pau){lt=performance.now();requestAnimationFrame(loop)}
 }
 
+function startGame(){
+  cv=document.getElementById('c');
+  cx=cv.getContext('2d');
+  cv.width=CVW;
+  cv.height=CVH;
+
+  W={
+    tiles:genWorld(),
+    res:[],
+    structs:[],
+    parts:[],
+  };
+  W.res=spawnRes(W.tiles);
+
+  P={
+    x:WW/2,y:WH/2,vx:0,vy:0,w:20,h:20,spd:130,
+    fc:1,wa:0,alive:true,st:0,score:0,
+    inv:new Array(RES.length).fill(0),maxInv:30,
+    maxO2:100,o2:100,maxHealth:100,health:100,
+    msm:1,nhab:false,mt:null,mp:0,
+  };
+
+  gt=0;
+  dc=0;
+  fr=0;
+  keys={};
+  bmode=null;
+  bp=false;
+  ip=false;
+  rp=false;
+  cp('build');
+  cp('inv');
+  cp('res');
+
+  setupInput();
+  cam.x=Math.max(0,Math.min(WW-CVW,P.x-CVW/2));
+  cam.y=Math.max(0,Math.min(WH-CVH,P.y-CVH/2));
+
+  document.getElementById('s-title').style.display='none';
+  document.getElementById('s-over').style.display='none';
+  document.getElementById('s-pause').style.display='none';
+
+  run=true;
+  pau=false;
+  lt=performance.now();
+  requestAnimationFrame(loop);
+}
+
+function showTitle(){
+  run=false;
+  pau=false;
+  bmode=null;
+  cp('build');
+  cp('inv');
+  cp('res');
+  document.getElementById('s-pause').style.display='none';
+  document.getElementById('s-over').style.display='none';
+  document.getElementById('s-title').style.display='flex';
+}
+
+function loop(now){
+  if(!run) return;
+  if(pau){
+    lt=now;
+    return;
+  }
+  const dt=Math.min((now-lt)/1000,0.05);
+  lt=now;
+  update(dt);
+  render();
+  requestAnimationFrame(loop);
+}
+
 // ════════════════════════════════════════
 //  INPUT
 // ════════════════════════════════════════════
 let ms={x:0,y:0,wx:0,wy:0};
 
 function setupInput(){
+  if(inputReady) return;
+  inputReady=true;
   window.addEventListener('keydown',e=>{
     if(!run)return;
     keys[e.code]=true;
@@ -519,7 +595,7 @@ function rStructs(){
     }else if(s.type===1){
       cx.fillStyle='#181820';cx.fillRect(s.wx+3,s.wy+3,s.w-6,s.h-6);
       const br=Math.max(0,Math.sin((dc-.25)*Math.PI*2)*.7+.3)*(dc<.5?1:.1);
-      for(let r2=0;r2<2;r2++)for(let c2=0;c2<3){const B=br*220|0;cx.fillStyle=`rgb(${B*.35|0},${B*.28|0},${B})`;cx.fillRect(s.wx+5+c2*((s.w-10)/3),s.wy+4+r2*((s.h-8)/2),(s.w-10)/3-2,(s.h-8)/2-2)}
+      for(let r2=0;r2<2;r2++)for(let c2=0;c2<3;){const B=br*220|0;cx.fillStyle=`rgb(${B*.35|0},${B*.28|0},${B})`;cx.fillRect(s.wx+5+c2*((s.w-10)/3),s.wy+4+r2*((s.h-8)/2),(s.w-10)/3-2,(s.h-8)/2-2)}
       cx.strokeStyle='#ffee88';cx.lineWidth=1;cx.shadowColor='#ffee88';cx.shadowBlur=br*10;cx.strokeRect(s.wx+3,s.wy+3,s.w-6,s.h-6);cx.shadowBlur=0;
     }else{
       const sd=ST[s.type];cx.fillStyle='#141424';cx.fillRect(s.wx+3,s.wy+3,s.w-6,s.h-6);
@@ -618,3 +694,9 @@ function rMini(){
   for(const s of W.structs){cx.fillStyle=ST[s.type].c;cx.fillRect(mx+s.tx*sx,my+s.ty*sy,s.w/TILE*sx+1,s.h/TILE*sy+1)}
   const px=mx+(P.x/TILE)*sx,py=my+(P.y/TILE)*sy;
   cx.fillStyle='#fff';cx.shadowColor='#fff';cx.shadowBlur=5;
+  cx.beginPath();cx.arc(px,py,2,0,Math.PI*2);cx.fill();cx.shadowBlur=0;
+}
+
+</script>
+</body>
+</html>
