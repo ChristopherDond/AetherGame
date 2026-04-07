@@ -23,7 +23,11 @@ export const RES = [
   { n: 'Joia', c: '#ff69b4' },
   { n: 'Combustivel', c: '#8b4513' },
   { n: 'Platina', c: '#e5e4e2' },
-  { n: 'Titanio', c: '#ccccdd' }
+  { n: 'Titanio', c: '#ccccdd' },
+  { n: 'O2 Pack', c: '#00ffee' },
+  { n: 'Medkit', c: '#ff6677' },
+  { n: 'Battery', c: '#ffdd44' },
+  { n: 'Alloy', c: '#aab2c2' }
 ];
 
 export const ST = [

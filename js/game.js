@@ -33,12 +33,22 @@ let bmode = null;
 let bp = false;
 let ip = false;
 let rp = false;
+let crp = false;
 let inputReady = false;
 let ms = { x: 0, y: 0, wx: 0, wy: 0 };
 let saveAcc = 0;
 let touchControlReady = false;
+let dpr = 1;
+let audioCtx = null;
+let lowO2Acc = 0;
 
 const SAVE_KEY = 'aether_save_v1';
+const CRAFT_RECIPES = [
+  { id: 'o2pack', nm: 'O2 Pack', out: 12, desc: '+30 O2', en: 5, needFabricator: true, inputs: { 5: 3, 0: 2 } },
+  { id: 'medkit', nm: 'Medkit', out: 13, desc: '+30 HP', en: 5, needFabricator: true, inputs: { 4: 3, 0: 1 } },
+  { id: 'battery', nm: 'Battery', out: 14, desc: '+25 EN', en: 4, needFabricator: true, inputs: { 0: 4, 11: 2 } },
+  { id: 'alloy', nm: 'Alloy', out: 15, desc: 'Material versatil', en: 4, needFabricator: true, inputs: { 3: 3, 10: 1 } }
+];
 
 function resetResearch() {
   for (const r of RSRCH) {
@@ -82,7 +92,10 @@ function normalizePlayer(player) {
     o2: 100,
     maxHealth: 100,
     health: 100,
+    maxEn: 120,
+    en: 30,
     msm: 1,
+    rc: 0,
     nhab: false,
     mt: null,
     mp: 0
@@ -135,6 +148,195 @@ function refreshContinueButton() {
   btn.style.display = localStorage.getItem(SAVE_KEY) ? 'inline-block' : 'none';
 }
 
+function ensureAudio() {
+  if (audioCtx) return audioCtx;
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  audioCtx = new AudioContextClass();
+  return audioCtx;
+}
+
+function playSfx(kind) {
+  const ctx = ensureAudio();
+  if (!ctx) return;
+  if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+  const now = ctx.currentTime;
+  const gain = ctx.createGain();
+  gain.connect(ctx.destination);
+  gain.gain.setValueAtTime(0.0001, now);
+
+  const osc = ctx.createOscillator();
+  osc.connect(gain);
+
+  let frequency = 220;
+  let duration = 0.12;
+  let wave = 'sine';
+  let gainValue = 0.08;
+
+  switch (kind) {
+    case 'mine':
+      frequency = 540;
+      duration = 0.08;
+      wave = 'triangle';
+      gainValue = 0.04;
+      break;
+    case 'build':
+      frequency = 180;
+      duration = 0.12;
+      wave = 'square';
+      gainValue = 0.05;
+      break;
+    case 'research':
+      frequency = 760;
+      duration = 0.16;
+      wave = 'sine';
+      gainValue = 0.05;
+      break;
+    case 'craft':
+      frequency = 320;
+      duration = 0.15;
+      wave = 'triangle';
+      gainValue = 0.05;
+      break;
+    case 'use':
+      frequency = 420;
+      duration = 0.12;
+      wave = 'sine';
+      gainValue = 0.045;
+      break;
+    case 'alarm':
+      frequency = 140;
+      duration = 0.18;
+      wave = 'sawtooth';
+      gainValue = 0.05;
+      break;
+    default:
+      frequency = 240;
+      duration = 0.1;
+      gainValue = 0.03;
+      break;
+  }
+
+  osc.type = wave;
+  osc.frequency.setValueAtTime(frequency, now);
+  osc.frequency.exponentialRampToValueAtTime(Math.max(40, frequency * 0.72), now + duration);
+  gain.gain.exponentialRampToValueAtTime(gainValue, now + 0.01);
+  gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+  osc.start(now);
+  osc.stop(now + duration + 0.02);
+}
+
+function countStruct(type) {
+  let total = 0;
+  for (const s of W.structs) if (s.type === type) total++;
+  return total;
+}
+
+function hasStructureNearby(type, radius = 220) {
+  for (const s of W.structs) {
+    if (s.type !== type) continue;
+    if (Math.hypot(P.x - (s.wx + s.w / 2), P.y - (s.wy + s.h / 2)) <= radius) return true;
+  }
+  return false;
+}
+
+function clamp(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function canCraft(recipe) {
+  if (recipe.needFabricator && !hasStructureNearby(3)) return false;
+  if (P.en < recipe.en) return false;
+  for (const [k, v] of Object.entries(recipe.inputs)) {
+    if (P.inv[+k] < v) return false;
+  }
+  return true;
+}
+
+function craftRecipe(recipeId) {
+  const recipe = CRAFT_RECIPES.find((x) => x.id === recipeId);
+  if (!recipe || !canCraft(recipe)) return;
+  for (const [k, v] of Object.entries(recipe.inputs)) P.inv[+k] -= v;
+  P.inv[recipe.out] += 1;
+  P.en = clamp(P.en - recipe.en, 0, P.maxEn);
+  playSfx('craft');
+  saveGame();
+  rCraftPanel();
+  rInv();
+}
+
+function useInv(type) {
+  if (!P.inv || P.inv[type] <= 0) return;
+  if (type === 12) {
+    P.o2 = Math.min(P.maxO2, P.o2 + 30);
+  } else if (type === 13) {
+    P.health = Math.min(P.maxHealth, P.health + 30);
+  } else if (type === 14) {
+    P.en = Math.min(P.maxEn, P.en + 25);
+  } else if (type === 15) {
+    P.en = Math.min(P.maxEn, P.en + 10);
+  } else {
+    return;
+  }
+  P.inv[type]--;
+  playSfx('use');
+  rInv();
+  saveGame();
+}
+
+function updateEnergy(dt) {
+  const solar = countStruct(1);
+  const turbine = countStruct(7);
+  const nuclear = countStruct(12);
+  const farm = countStruct(5);
+  const extractor = countStruct(6);
+  const lab = countStruct(4);
+
+  const day = dc < 0.5 ? 1 : 0;
+  const night = dc >= 0.5 ? 1 : 0;
+  const generation = solar * 4.5 * day + turbine * 4.5 * night + nuclear * 8.5;
+  P.en = clamp(P.en + generation * dt, 0, P.maxEn);
+
+  for (const s of W.structs) {
+    s.t = (s.t || 0) + dt;
+    if (s.type === 5 && s.t >= 4.5 && P.en >= 1.5) {
+      s.t = 0;
+      P.en = clamp(P.en - 1.5, 0, P.maxEn);
+      P.inv[4] += 1;
+      playSfx('craft');
+    }
+    if (s.type === 6 && s.t >= 5.5 && P.en >= 1.5) {
+      s.t = 0;
+      P.en = clamp(P.en - 1.5, 0, P.maxEn);
+      P.inv[5] += 1;
+      playSfx('craft');
+    }
+    if (s.type === 4 && s.t >= 9 && P.en >= 2) {
+      s.t = 0;
+      P.en = clamp(P.en - 2, 0, P.maxEn);
+      P.rc = clamp(P.rc + 28, 0, 100);
+    }
+  }
+
+  if (lab > 0 && P.rc >= 100) {
+    const nextResearch = RSRCH.find((r) => !r.un && rStatus(r) === 'ok');
+    if (nextResearch) {
+      unlockR(nextResearch);
+      P.rc = 0;
+      playSfx('research');
+    }
+  }
+}
+
+function resizeCanvas() {
+  if (!cv || !cx) return;
+  dpr = Math.max(1, window.devicePixelRatio || 1);
+  cv.width = Math.round(CVW * dpr);
+  cv.height = Math.round(CVH * dpr);
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx.imageSmoothingEnabled = true;
+}
+
 function setKeyState(code, pressed) {
   keys[code] = pressed;
 }
@@ -143,6 +345,7 @@ function closePanels() {
   cp('build');
   cp('inv');
   cp('res');
+  cp('craft');
   bmode = null;
 }
 
@@ -167,6 +370,10 @@ function initTouchControls() {
       }
       if (code === 'KeyR') {
         if (run && !pau) op('res');
+        return;
+      }
+      if (code === 'KeyC') {
+        if (run && !pau) op('craft');
         return;
       }
       if (code === 'KeyP') {
@@ -206,11 +413,19 @@ function initTouchControls() {
 }
 
 function placeStruct(tp, tx, ty) {
+  return placeStructAt(tp, tx, ty, false);
+}
+
+function placeStructAt(tp, tx, ty, free = false) {
   const sd = ST[tp];
-  for (const [k, v] of Object.entries(sd.cs)) P.inv[+k] -= v;
+  if (!free) {
+    for (const [k, v] of Object.entries(sd.cs)) P.inv[+k] -= v;
+  }
   W.structs.push({ type: tp, tx, ty, wx: tx * TILE, wy: ty * TILE, w: sd.w * TILE, h: sd.h * TILE, hp: 100 });
   for (let dy = 0; dy < sd.h; dy++) for (let dx = 0; dx < sd.w; dx++) W.tiles[(ty + dy) * COLS + (tx + dx)] = T.VOID;
-  parts(tx * TILE + sd.w * TILE / 2, ty * TILE + sd.h * TILE / 2, sd.c, 16);
+  if (!free) parts(tx * TILE + sd.w * TILE / 2, ty * TILE + sd.h * TILE / 2, sd.c, 16);
+  if (!free) playSfx('build');
+  return W.structs[W.structs.length - 1];
 }
 
 function canPlace(tp, tx, ty) {
@@ -280,6 +495,7 @@ function unlockR(r) {
     P.maxHealth = r.b.mh;
     P.health = Math.min(P.health, r.b.mh);
   }
+  playSfx('research');
   parts(P.x, P.y, '#9900ff', 20);
 }
 
@@ -287,6 +503,7 @@ function op(pn) {
   cp('build');
   cp('inv');
   cp('res');
+  cp('craft');
   if (pn === 'build') {
     bp = true;
     rBuild();
@@ -296,6 +513,9 @@ function op(pn) {
   } else if (pn === 'res') {
     rp = true;
     rResPanel();
+  } else if (pn === 'craft') {
+    crp = true;
+    rCraftPanel();
   }
   document.getElementById(`p-${pn}`).classList.add('open');
 }
@@ -304,6 +524,7 @@ function cp(pn) {
   if (pn === 'build') bp = false;
   else if (pn === 'inv') ip = false;
   else if (pn === 'res') rp = false;
+  else if (pn === 'craft') crp = false;
   document.getElementById(`p-${pn}`).classList.remove('open');
 }
 
@@ -322,11 +543,23 @@ function rInv() {
   let h = '<div class="il">';
   for (let i = 0; i < RES.length; i++) {
     if (P.inv[i] <= 0) continue;
-    h += `<div class="ir"><div class="idot" style="background:${RES[i].c}"></div><div class="ilb">${RES[i].n}</div><div class="iv" style="color:${RES[i].c}">${P.inv[i]}</div></div>`;
+    const usable = i >= 12 && i <= 15;
+    h += `<div class="ir"><div class="idot" style="background:${RES[i].c}"></div><div class="ilb">${RES[i].n}</div><div class="iv" style="color:${RES[i].c}">${P.inv[i]}</div>${usable ? `<button class="inv-use" onclick="useInv(${i})">USAR</button>` : ''}<button class="inv-drop" onclick="discardInv(${i})">DESCARTAR</button></div>`;
   }
   if (!used) h += '<div style="color:#445;text-align:center;padding:20px;font-size:0.75rem">Vazio - mine com [E]</div>';
   h += `</div><div class="ifr">${used} / ${P.maxInv} slots · Score: ${P.score} · ${Math.floor(P.st)}s</div>`;
   document.getElementById('ibody').innerHTML = h;
+}
+
+function rCraftPanel() {
+  let h = '<div class="rl">';
+  for (const recipe of CRAFT_RECIPES) {
+    const ok = canCraft(recipe);
+    const costText = Object.entries(recipe.inputs).map(([k, v]) => `<span>${v} ${RES[+k].n}</span>`).join(' · ');
+    h += `<div class="rr ${ok ? 'ready' : 'locked'}"><div class="ric">C</div><div class="ri"><div class="rn">${recipe.nm}</div><div class="rd">${recipe.desc}</div><div class="rc">${costText}</div><div class="rc"><span>${recipe.en} EN</span>${recipe.needFabricator ? ' · <span>Fabricador</span>' : ''}</div></div><button class="craft-btn" onclick="craftRecipe('${recipe.id}')" ${ok ? '' : 'disabled'}>${ok ? 'CRAFT' : 'BLOQUEADO'}</button></div>`;
+  }
+  h += '</div>';
+  document.getElementById('cbody').innerHTML = h;
 }
 
 function rResPanel() {
@@ -339,7 +572,7 @@ function rResPanel() {
     const oc2 = st2 === 'ok' ? `onclick="doR('${r.id}')"` : '';
     h += `<div class="rr ${cls}" ${oc2}><div class="ric">R</div><div class="ri"><div class="rn">${r.nm}</div><div class="rd">${r.d}</div><div class="rc">${Object.entries(r.cs).map(([k, v]) => `<span>${v} ${RES[+k].n}</span>`).join(' · ')}</div></div><div class="rs ${sl}">${lb}</div></div>`;
   }
-  h += '</div>';
+  h += '</div><div class="ifr">Laboratorio: ' + Math.floor(P.rc || 0) + '% · Pesquisas automáticas quando houver energia</div>';
   document.getElementById('rbody').innerHTML = h;
 }
 
@@ -356,6 +589,19 @@ function doR(id) {
   rResPanel();
 }
 
+function discardInv(type) {
+  if (!P.inv || P.inv[type] <= 0) return;
+  const maxAmount = P.inv[type];
+  const answer = window.prompt(`Quantos ${RES[type].n.toLowerCase()} deseja descartar?`, '1');
+  if (answer === null) return;
+  const amount = Math.max(1, Math.min(maxAmount, Number.parseInt(answer, 10) || 0));
+  if (amount <= 0) return;
+  P.inv[type] -= amount;
+  if (P.inv[type] < 0) P.inv[type] = 0;
+  rInv();
+  saveGame();
+}
+
 function togglePause() {
   if (!run) return;
   pau = !pau;
@@ -370,8 +616,7 @@ function togglePause() {
 function startGame(savedState = null) {
   cv = document.getElementById('c');
   cx = cv.getContext('2d');
-  cv.width = CVW;
-  cv.height = CVH;
+  resizeCanvas();
 
   if (savedState && savedState.world && savedState.player) {
     applyResearch(savedState.research || []);
@@ -383,6 +628,8 @@ function startGame(savedState = null) {
       parts: []
     };
     P = normalizePlayer(savedState.player);
+    P.en = typeof savedState.player.en === 'number' ? savedState.player.en : P.en;
+    P.rc = typeof savedState.player.rc === 'number' ? savedState.player.rc : P.rc;
     gt = typeof savedState.gt === 'number' ? savedState.gt : 0;
     dc = typeof savedState.dc === 'number' ? savedState.dc : 0;
     fr = typeof savedState.fr === 'number' ? savedState.fr : 0;
@@ -398,6 +645,12 @@ function startGame(savedState = null) {
     };
     W.res = spawnRes(W.tiles, seeded(999, W.seed) * 99999 | 0);
     P = normalizePlayer();
+    const spawnTx = Math.floor(COLS / 2) - 1;
+    const spawnTy = Math.floor(ROWS / 2) - 1;
+    placeStructAt(0, spawnTx, spawnTy, true);
+    P.x = (spawnTx - 1) * TILE + TILE / 2;
+    P.y = spawnTy * TILE + TILE;
+    P.en = 50;
     gt = 0;
     dc = 0;
     fr = 0;
@@ -408,10 +661,13 @@ function startGame(savedState = null) {
   bp = false;
   ip = false;
   rp = false;
+  crp = false;
   saveAcc = 0;
+  lowO2Acc = 0;
   cp('build');
   cp('inv');
   cp('res');
+  cp('craft');
 
   setupInput();
   cam.x = Math.max(0, Math.min(WW - CVW, P.x - CVW / 2));
@@ -455,6 +711,12 @@ function setupInput() {
   if (inputReady) return;
   inputReady = true;
   initTouchControls();
+  window.addEventListener('resize', () => {
+    if (run) resizeCanvas();
+  });
+  window.addEventListener('orientationchange', () => {
+    if (run) resizeCanvas();
+  });
   window.addEventListener('beforeunload', () => {
     if (run && P.alive) saveGame();
   });
@@ -465,6 +727,7 @@ function setupInput() {
       cp('build');
       cp('inv');
       cp('res');
+      cp('craft');
       bmode = null;
       e.preventDefault();
     }
@@ -473,6 +736,11 @@ function setupInput() {
       return;
     }
     if (pau) return;
+    if (e.code === 'KeyC') {
+      op('craft');
+      e.preventDefault();
+      return;
+    }
     if (e.code === 'KeyB') {
       op('build');
       e.preventDefault();
@@ -528,6 +796,7 @@ function update(dt) {
   }
   dc = (gt % DAY_PERIOD) / DAY_PERIOD;
   if (!bp && !ip && !rp) updatePlayer(dt);
+  updateEnergy(dt);
   for (const p of W.parts) {
     p.x += p.vx * dt;
     p.y += p.vy * dt;
@@ -572,7 +841,7 @@ function updatePlayer(dt) {
 
   P.nhab = false;
   for (const s of W.structs) {
-    if (s.type === 0 && Math.hypot(P.x - (s.wx + s.w / 2), P.y - (s.wy + s.h / 2)) < 170) {
+    if (s.type === 0 && Math.hypot(P.x - (s.wx + s.w / 2), P.y - (s.wy + s.h / 2)) < 205) {
       P.nhab = true;
       break;
     }
@@ -580,11 +849,20 @@ function updatePlayer(dt) {
   if (P.nhab) {
     P.o2 = Math.min(P.maxO2, P.o2 + 25 * dt);
     P.health = Math.min(P.maxHealth, P.health + 8 * dt);
+    lowO2Acc = 0;
   } else {
-    P.o2 -= 2.5 * dt;
+    P.o2 -= 1.5 * dt;
     if (P.o2 <= 0) {
       P.o2 = 0;
-      P.health -= 12 * dt;
+      P.health -= 10 * dt;
+    }
+  }
+
+  if (P.o2 < 20 && !P.nhab) {
+    lowO2Acc += dt;
+    if (lowO2Acc >= 2) {
+      playSfx('alarm');
+      lowO2Acc = 0;
     }
   }
 
@@ -624,13 +902,14 @@ function doMine(dt) {
     P.mt = nr;
     P.mp = 0;
   }
-  P.mp += (dt / 1.4) * P.msm;
+  P.mp += (dt / 1.0) * P.msm;
   if (fr % 5 === 0) parts(nr.x, nr.y, RES[nr.type].c, 2);
   if (P.mp >= 1) {
     P.mp = 0;
     if (P.inv.reduce((a, b) => a + b, 0) < P.maxInv) {
       P.inv[nr.type]++;
       nr.amount--;
+      playSfx('mine');
       parts(nr.x, nr.y, RES[nr.type].c, 10);
     }
   }
@@ -945,6 +1224,7 @@ function rHUD() {
   cx.fillRect(0, 0, CVW, 50);
   bar2(16, 12, 190, 14, P.o2 / P.maxO2, '#0088cc', '#00ccff', 'O2');
   bar2(222, 12, 190, 14, P.health / P.maxHealth, '#880022', '#ff2244', 'HP');
+  bar2(428, 28, 150, 10, P.en / P.maxEn, '#112244', '#00e5ff', 'EN');
 
   const dn = dc < 0.5;
   cx.save();
@@ -977,7 +1257,7 @@ function rHUD() {
   cx.fillStyle = '#304050';
   cx.font = '10px Courier New';
   cx.textAlign = 'center';
-  cx.fillText('[ B ] Construir  ·  [ I ] Inventario  ·  [ R ] Pesquisa  ·  [ E ] Minerar', CVW / 2, CVH - 10);
+  cx.fillText('[ B ] Construir  ·  [ C ] Craft  ·  [ I ] Inventario  ·  [ R ] Pesquisa  ·  [ E ] Minerar', CVW / 2, CVH - 10);
 
   if (bmode !== null) {
     cx.fillStyle = 'rgba(2,0,10,0.92)';
@@ -1081,6 +1361,9 @@ function installGlobalHandlers() {
   window.cp = cp;
   window.tryB = tryB;
   window.doR = doR;
+  window.craftRecipe = craftRecipe;
+  window.useInv = useInv;
+  window.discardInv = discardInv;
 }
 
 installGlobalHandlers();

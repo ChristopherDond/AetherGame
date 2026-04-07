@@ -99,6 +99,33 @@ canvas{
 .idot{width:12px;height:12px;border-radius:2px;flex-shrink:0}
 .ilb{font-size:.75rem;color:#667;flex:1}
 .iv{font-size:.82rem;font-weight:bold}
+.inv-drop{
+  border:1px solid #233a55;
+  background:rgba(8,12,26,.8);
+  color:#9adfff;
+  font-family:'Courier New',monospace;
+  font-size:.62rem;
+  letter-spacing:.08em;
+  padding:4px 7px;
+  border-radius:3px;
+  cursor:pointer;
+}
+.inv-drop:hover{border-color:#00e5ff;color:#00e5ff;box-shadow:0 0 14px rgba(0,229,255,.14)}
+.inv-use,
+.craft-btn{
+  border:1px solid #233a55;
+  background:rgba(8,12,26,.85);
+  color:#b8ffff;
+  font-family:'Courier New',monospace;
+  font-size:.62rem;
+  letter-spacing:.08em;
+  padding:4px 7px;
+  border-radius:3px;
+  cursor:pointer;
+}
+.inv-use:hover,
+.craft-btn:hover{border-color:#00e5ff;color:#00e5ff;box-shadow:0 0 14px rgba(0,229,255,.14)}
+.craft-btn:disabled{opacity:.35;cursor:default;box-shadow:none}
 .ifr{margin-top:12px;padding-top:8px;border-top:1px solid #14142a;font-size:.72rem;color:#445;text-align:center}
 .rl{display:flex;flex-direction:column;gap:8px}
 .rr{background:#0c0c1a;border:1px solid #1a1a35;padding:10px 14px;display:flex;align-items:center;gap:12px;border-radius:2px;transition:all .12s}
@@ -183,4 +210,8 @@ canvas{
   .touch-controls{padding:8px;gap:10px}
   .touch-btn{min-width:46px;min-height:46px;font-size:.74rem}
   .touch-btn.primary{min-width:60px;min-height:60px}
+  .ir{gap:8px;padding:6px 7px;flex-wrap:wrap}
+  .inv-use,
+  .inv-drop,
+  .craft-btn{width:100%;padding:6px 8px}
 }
