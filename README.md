@@ -1,5 +1,7 @@
 # AETHER
 
+[Versão em Português](README.pt-BR.md)
+
 AETHER is a top-down 2D survival game set on a hostile alien world.
 You are a crash-landed explorer trying to stay alive long enough to build, research, and expand your outpost.
 
