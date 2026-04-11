@@ -41,6 +41,8 @@ let touchControlReady = false;
 let dpr = 1;
 let audioCtx = null;
 let lowO2Acc = 0;
+let unlockedResearch = new Set();
+let discardState = null;
 
 const SAVE_KEY = 'aether_save_v1';
 const CRAFT_RECIPES = [
@@ -51,25 +53,34 @@ const CRAFT_RECIPES = [
 ];
 
 function resetResearch() {
-  for (const r of RSRCH) {
-    r.un = false;
-  }
+  unlockedResearch = new Set();
 }
 
 function exportResearch() {
-  const unlocked = [];
-  for (const r of RSRCH) {
-    if (r.un) unlocked.push(r.id);
-  }
-  return unlocked;
+  return Array.from(unlockedResearch);
 }
 
 function applyResearch(unlockedIds = []) {
-  resetResearch();
-  const set = new Set(unlockedIds);
+  unlockedResearch = new Set(unlockedIds);
+}
+
+function isResearchUnlocked(id) {
+  return unlockedResearch.has(id);
+}
+
+function applyResearchBonuses(player) {
+  if (!player) return;
+  player.msm = 1;
+  player.maxO2 = 100;
+  player.maxHealth = 100;
   for (const r of RSRCH) {
-    r.un = set.has(r.id);
+    if (!isResearchUnlocked(r.id)) continue;
+    if (r.b.ms) player.msm = Math.min(player.msm * r.b.ms, 3);
+    if (r.b.mo) player.maxO2 = r.b.mo;
+    if (r.b.mh) player.maxHealth = r.b.mh;
   }
+  player.o2 = Math.min(player.o2, player.maxO2);
+  player.health = Math.min(player.health, player.maxHealth);
 }
 
 function normalizePlayer(player) {
@@ -117,7 +128,6 @@ function saveGame() {
       fr,
       world: {
         seed: W.seed || 0,
-        tiles: Array.from(W.tiles || []),
         res: W.res || [],
         structs: W.structs || []
       },
@@ -140,6 +150,27 @@ function loadGame() {
   } catch (_err) {
     // Ignore invalid save payloads and keep menu available.
   }
+}
+
+function rebuildTilesFromSeed(seed, structs = [], fallbackTiles = null) {
+  const worldData = genWorld(seed || Math.floor(Math.random() * 99999));
+  const tiles = worldData.tiles;
+  for (const s of structs) {
+    const sd = ST[s.type];
+    if (!sd) continue;
+    for (let dy = 0; dy < sd.h; dy++) {
+      for (let dx = 0; dx < sd.w; dx++) {
+        const tx = s.tx + dx;
+        const ty = s.ty + dy;
+        if (tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS) continue;
+        tiles[ty * COLS + tx] = T.VOID;
+      }
+    }
+  }
+  if (fallbackTiles && fallbackTiles.length === tiles.length) {
+    return Uint8Array.from(fallbackTiles);
+  }
+  return tiles;
 }
 
 function refreshContinueButton() {
@@ -346,7 +377,43 @@ function closePanels() {
   cp('inv');
   cp('res');
   cp('craft');
+  closeDiscardModal();
   bmode = null;
+}
+
+function showDiscardModal(type) {
+  if (!P.inv || P.inv[type] <= 0) return;
+  discardState = { type, maxAmount: P.inv[type] };
+  const panel = document.getElementById('p-discard');
+  const label = document.getElementById('discard-label');
+  const input = document.getElementById('discard-amount');
+  if (!panel || !label || !input) return;
+  label.textContent = `Quanto de ${RES[type].n.toLowerCase()} deseja descartar? (max ${discardState.maxAmount})`;
+  input.max = String(discardState.maxAmount);
+  input.value = '1';
+  panel.classList.add('open');
+  input.focus();
+  input.select();
+}
+
+function closeDiscardModal() {
+  discardState = null;
+  const panel = document.getElementById('p-discard');
+  if (!panel) return;
+  panel.classList.remove('open');
+}
+
+function confirmDiscardModal() {
+  if (!discardState || !P.inv) return;
+  const input = document.getElementById('discard-amount');
+  if (!input) return;
+  const amount = Math.max(1, Math.min(discardState.maxAmount, Number.parseInt(input.value, 10) || 0));
+  if (amount <= 0) return;
+  P.inv[discardState.type] -= amount;
+  if (P.inv[discardState.type] < 0) P.inv[discardState.type] = 0;
+  closeDiscardModal();
+  rInv();
+  saveGame();
 }
 
 function initTouchControls() {
@@ -476,8 +543,8 @@ function moveE(e, dt) {
 }
 
 function rStatus(r) {
-  if (r.un) return 'done';
-  if (r.rq && !RSRCH.find((x) => x.id === r.rq)?.un) return 'miss';
+  if (isResearchUnlocked(r.id)) return 'done';
+  if (r.rq && !isResearchUnlocked(r.rq)) return 'miss';
   for (const [k, v] of Object.entries(r.cs)) if (P.inv[+k] < v) return 'miss';
   return 'ok';
 }
@@ -485,7 +552,7 @@ function rStatus(r) {
 function unlockR(r) {
   if (rStatus(r) !== 'ok') return;
   for (const [k, v] of Object.entries(r.cs)) P.inv[+k] -= v;
-  r.un = true;
+  unlockedResearch.add(r.id);
   if (r.b.ms) P.msm = Math.min(P.msm * r.b.ms, 3);
   if (r.b.mo) {
     P.maxO2 = r.b.mo;
@@ -590,16 +657,7 @@ function doR(id) {
 }
 
 function discardInv(type) {
-  if (!P.inv || P.inv[type] <= 0) return;
-  const maxAmount = P.inv[type];
-  const answer = window.prompt(`Quantos ${RES[type].n.toLowerCase()} deseja descartar?`, '1');
-  if (answer === null) return;
-  const amount = Math.max(1, Math.min(maxAmount, Number.parseInt(answer, 10) || 0));
-  if (amount <= 0) return;
-  P.inv[type] -= amount;
-  if (P.inv[type] < 0) P.inv[type] = 0;
-  rInv();
-  saveGame();
+  showDiscardModal(type);
 }
 
 function togglePause() {
@@ -620,14 +678,17 @@ function startGame(savedState = null) {
 
   if (savedState && savedState.world && savedState.player) {
     applyResearch(savedState.research || []);
+    const structs = savedState.world.structs || [];
+    const rebuiltTiles = rebuildTilesFromSeed(savedState.world.seed || 0, structs, savedState.world.tiles || null);
     W = {
       seed: savedState.world.seed || 0,
-      tiles: Uint8Array.from(savedState.world.tiles || []),
+      tiles: rebuiltTiles,
       res: savedState.world.res || [],
-      structs: savedState.world.structs || [],
+      structs,
       parts: []
     };
     P = normalizePlayer(savedState.player);
+    applyResearchBonuses(P);
     P.en = typeof savedState.player.en === 'number' ? savedState.player.en : P.en;
     P.rc = typeof savedState.player.rc === 'number' ? savedState.player.rc : P.rc;
     gt = typeof savedState.gt === 'number' ? savedState.gt : 0;
@@ -668,6 +729,7 @@ function startGame(savedState = null) {
   cp('inv');
   cp('res');
   cp('craft');
+  closeDiscardModal();
 
   setupInput();
   cam.x = Math.max(0, Math.min(WW - CVW, P.x - CVW / 2));
@@ -728,6 +790,7 @@ function setupInput() {
       cp('inv');
       cp('res');
       cp('craft');
+      closeDiscardModal();
       bmode = null;
       e.preventDefault();
     }
@@ -795,7 +858,7 @@ function update(dt) {
     saveAcc = 0;
   }
   dc = (gt % DAY_PERIOD) / DAY_PERIOD;
-  if (!bp && !ip && !rp) updatePlayer(dt);
+  if (!bp && !ip && !rp && !crp && !discardState) updatePlayer(dt);
   updateEnergy(dt);
   for (const p of W.parts) {
     p.x += p.vx * dt;
@@ -1353,12 +1416,28 @@ function rMini() {
 }
 
 function installGlobalHandlers() {
-  window.startGame = startGame;
-  window.loadGame = loadGame;
-  window.saveGame = saveGame;
-  window.showTitle = showTitle;
-  window.togglePause = togglePause;
-  window.cp = cp;
+  const bindClick = (id, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', handler);
+  };
+  bindClick('btn-start', () => startGame());
+  bindClick('btn-continue', () => loadGame());
+  bindClick('btn-retry', () => startGame());
+  bindClick('btn-menu-from-over', () => showTitle());
+  bindClick('btn-resume', () => togglePause());
+  bindClick('btn-menu-from-pause', () => showTitle());
+  bindClick('btn-discard-confirm', () => confirmDiscardModal());
+  bindClick('btn-discard-cancel', () => closeDiscardModal());
+
+  const closers = document.querySelectorAll('[data-panel-close]');
+  for (const closer of closers) {
+    closer.addEventListener('click', () => {
+      const panel = closer.getAttribute('data-panel-close');
+      if (panel === 'discard') closeDiscardModal();
+      else if (panel) cp(panel);
+    });
+  }
+
   window.tryB = tryB;
   window.doR = doR;
   window.craftRecipe = craftRecipe;

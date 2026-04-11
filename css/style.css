@@ -144,6 +144,22 @@ canvas{
 .rs.miss{color:#556;border-color:#333}
 .rs.ok{color:#cc0;border-color:#cc0}
 
+.discard-modal{min-width:340px;max-width:420px}
+.discard-label{color:#667;letter-spacing:.08em;font-size:.72rem;margin-bottom:10px;line-height:1.5}
+.discard-input{
+  width:100%;
+  border:1px solid #2a3c56;
+  background:#060b16;
+  color:#d7f7ff;
+  font-family:'Courier New',monospace;
+  font-size:.9rem;
+  padding:8px 10px;
+  border-radius:3px;
+  margin-bottom:12px;
+}
+.discard-input:focus{outline:none;border-color:#00e5ff;box-shadow:0 0 0 1px #00e5ff33}
+.discard-actions{display:flex;gap:8px;justify-content:flex-end}
+
 .touch-controls{
   position:fixed;
   left:0;

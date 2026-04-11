@@ -11,31 +11,49 @@
 <div id="s-title" class="screen" style="display:flex">
   <h1>AETHER</h1>
   <p>Sua nave caiu num planeta alienigena desconhecido.<br>Minere recursos · Construa sua base · Sobreviva.<br><br><span class="controls-inline">WASD/SETAS - MOVER | E - MINERAR | B - CONSTRUIR | I - INVENTARIO | R - PESQUISA | P - PAUSA</span></p>
-  <button class="btn" onclick="startGame()">▶ INICIAR MISSAO</button>
-  <button id="btn-continue" class="btn" onclick="loadGame()" style="display:none">▶ CONTINUAR</button>
+  <button id="btn-start" class="btn">▶ INICIAR MISSAO</button>
+  <button id="btn-continue" class="btn" style="display:none">▶ CONTINUAR</button>
 </div>
 
 <div id="s-over" class="screen">
   <h1 class="death-title">MISSAO FALHOU</h1>
   <p id="death-reason">O astronauta nao sobreviveu.</p>
-  <button class="btn red" onclick="startGame()">↺ TENTAR NOVAMENTE</button>
-  <button class="btn" onclick="showTitle()">← MENU</button>
+  <button id="btn-retry" class="btn red">↺ TENTAR NOVAMENTE</button>
+  <button id="btn-menu-from-over" class="btn">← MENU</button>
 </div>
 
 <div id="s-pause" class="screen">
   <h1>PAUSADO</h1>
   <p>Pressione <span class="key-inline">P</span> para continuar</p>
-  <button class="btn" onclick="togglePause()">▶ CONTINUAR</button>
-  <button class="btn red" onclick="showTitle()">↺ SAIR</button>
+  <button id="btn-resume" class="btn">▶ CONTINUAR</button>
+  <button id="btn-menu-from-pause" class="btn red">↺ SAIR</button>
 </div>
 
-<div id="p-build" class="pov"><div class="bd" onclick="cp('build')"></div><div class="pnl"><div class="ph"><h2>CONSTRUCAO</h2><button class="pc" onclick="cp('build')">✕</button></div><div class="pb"><div id="bgrid" class="bg"></div></div></div></div>
+<div id="p-build" class="pov"><div class="bd" data-panel-close="build"></div><div class="pnl"><div class="ph"><h2>CONSTRUCAO</h2><button class="pc" data-panel-close="build">✕</button></div><div class="pb"><div id="bgrid" class="bg"></div></div></div></div>
 
-<div id="p-inv" class="pov"><div class="bd" onclick="cp('inv')"></div><div class="pnl"><div class="ph"><h2>INVENTARIO</h2><button class="pc" onclick="cp('inv')">✕</button></div><div class="pb" id="ibody"></div></div></div></div>
+<div id="p-inv" class="pov"><div class="bd" data-panel-close="inv"></div><div class="pnl"><div class="ph"><h2>INVENTARIO</h2><button class="pc" data-panel-close="inv">✕</button></div><div class="pb" id="ibody"></div></div></div></div>
 
-<div id="p-res" class="pov"><div class="bd" onclick="cp('res')"></div><div class="pnl"><div class="ph"><h2>PESQUISA</h2><button class="pc" onclick="cp('res')">✕</button></div><div class="pb" id="rbody"></div></div></div></div>
+<div id="p-res" class="pov"><div class="bd" data-panel-close="res"></div><div class="pnl"><div class="ph"><h2>PESQUISA</h2><button class="pc" data-panel-close="res">✕</button></div><div class="pb" id="rbody"></div></div></div></div>
 
-<div id="p-craft" class="pov"><div class="bd" onclick="cp('craft')"></div><div class="pnl"><div class="ph"><h2>CRAFT</h2><button class="pc" onclick="cp('craft')">✕</button></div><div class="pb" id="cbody"></div></div></div></div>
+<div id="p-craft" class="pov"><div class="bd" data-panel-close="craft"></div><div class="pnl"><div class="ph"><h2>CRAFT</h2><button class="pc" data-panel-close="craft">✕</button></div><div class="pb" id="cbody"></div></div></div></div>
+
+<div id="p-discard" class="pov">
+  <div class="bd" data-panel-close="discard"></div>
+  <div class="pnl discard-modal">
+    <div class="ph">
+      <h2>DESCARTAR ITEM</h2>
+      <button class="pc" data-panel-close="discard">✕</button>
+    </div>
+    <div class="pb">
+      <p id="discard-label" class="discard-label">Escolha a quantidade para descartar.</p>
+      <input id="discard-amount" class="discard-input" type="number" min="1" step="1" inputmode="numeric">
+      <div class="discard-actions">
+        <button id="btn-discard-confirm" class="btn">CONFIRMAR</button>
+        <button id="btn-discard-cancel" class="btn red" data-panel-close="discard">CANCELAR</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <canvas id="c"></canvas>
 <div id="touch-controls" class="touch-controls" aria-hidden="true">
