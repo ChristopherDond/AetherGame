@@ -1,37 +1,37 @@
 # AETHER
 
-[Versão em Português](README.pt-BR.md)
+[Versao em Portugues](README.pt-BR.md)
 
-AETHER is a top-down 2D survival game set on a hostile alien world.
-You are a crash-landed explorer trying to stay alive long enough to build, research, and expand your outpost.
+AETHER is a top-down 2D survival game set on a hostile alien planet.
+You are a crash-landed explorer trying to stay alive while building infrastructure, managing energy, and unlocking upgrades.
 
-The project is built with plain HTML, CSS, and JavaScript modules, focused on fast iteration and smooth browser gameplay.
+Built with plain HTML, CSS, and JavaScript modules.
+No framework, no build step, fast iteration.
 
-## Highlights
+## What Is Already Implemented
 
-- Procedural terrain generation with seeded randomness
-- Resource mining loop with progress feedback
-- Inventory management with discard and consumable use actions
-- Building system with placement validation and costs
-- Research upgrades that affect survival and progression
-- Crafting panel with energy-aware recipes
-- Energy economy with day and night production behavior
-- Habitat-based oxygen and health recovery zone
-- Day and night cycle with visual atmosphere shifts
-- Minimap and HUD overlays for situational awareness
-- Touch controls for mobile-friendly play
-- Local save and load support
+- Procedural world generation with deterministic seed-based noise
+- Resource clusters distributed across different terrain types
+- Mining loop with progress feedback
+- Inventory with consumable use and selective discard modal
+- Building placement system with cost, collision, and terrain checks
+- Energy production and consumption simulation
+- Crafting recipes gated by structure proximity and energy
+- Research tree with prerequisites and permanent player bonuses
+- Habitat safety radius (O2 and HP regeneration)
+- Day and night cycle affecting energy production
+- Touch controls for mobile devices
+- Automatic save/load through browser local storage
 - Lightweight sound effects via Web Audio API
 
-## Core Gameplay Loop
+## Core Loop
 
-1. Explore generated terrain.
-2. Mine resources near your position.
-3. Build structures to improve infrastructure.
-4. Generate and manage energy.
-5. Craft support items such as oxygen packs and medkits.
-6. Research upgrades to improve efficiency and survivability.
-7. Survive as long as possible and improve your score.
+1. Explore and locate resource clusters.
+2. Mine materials near your character.
+3. Build structures to improve production and survivability.
+4. Manage energy for crafting and research progression.
+5. Craft support items (O2 Pack, Medkit, Battery, Alloy).
+6. Unlock research upgrades and survive longer to improve score.
 
 ## Controls
 
@@ -39,106 +39,100 @@ The project is built with plain HTML, CSS, and JavaScript modules, focused on fa
 
 - Move: WASD or Arrow Keys
 - Mine: E
-- Build panel: B
-- Craft panel: C
-- Inventory panel: I
-- Research panel: R
-- Pause: P
-- Cancel placement / close overlays: Escape
+- Open Build panel: B
+- Open Craft panel: C
+- Open Inventory panel: I
+- Open Research panel: R
+- Pause/Resume: P
+- Cancel placement / close open overlays: Escape
 
 ### Mobile
 
 - Virtual movement pad on the left
-- Action buttons on the right for mining and panels
+- Action buttons on the right (mine and panel shortcuts)
 
-## Getting Started
+## Run Locally
 
-Because the game uses JavaScript modules, run it through a local web server.
+Because the game uses ES modules, serve it through a local web server.
 
-Option A: Python
+Option A (Python):
 
-    python -m http.server 8080
+```bash
+python -m http.server 8080
+```
 
-Then open:
+Open:
 
-    http://localhost:8080
+```text
+http://localhost:8080
+```
 
-Option B: VS Code Live Server
+Option B (VS Code Live Server):
 
-- Open the project folder
-- Start a local server extension
-- Open the served index page
+1. Open the project folder.
+2. Start Live Server.
+3. Open the served page.
 
-## Project Structure
+## Project Layout
 
-- index.html: Main UI shell and game panels
-- css/style.css: Visual style, responsive layout, touch UI styling
-- js/constants.js: Core constants and gameplay data tables
-- js/utils.js: Utility helpers
-- js/worldgen.js: Terrain and resource generation
-- js/game.js: Main runtime, rendering, gameplay, UI flow, save/load, audio
+- `index.html`: Main screens, HUD containers, and panels
+- `css/style.css`: Visual style, layout, responsive behavior, touch controls
+- `js/constants.js`: Tile, world, resource, structure, and research data
+- `js/utils.js`: Utility math and deterministic random helpers
+- `js/worldgen.js`: Terrain and resource generation
+- `js/game.js`: Runtime loop, rendering, UI, input, systems, save/load, audio
 
-## Systems Overview
+## Systems Summary
 
-### World Generation
+### World
 
-Terrain and resources are generated with deterministic noise patterns and clustering logic for more natural placement.
+- Map grid: 80 x 60 tiles
+- Tile size: 40 px
+- Deterministic generation from seed values
 
 ### Survival
 
-- Oxygen drains while outside habitat protection
-- Health is damaged when oxygen reaches zero
-- Habitat restores oxygen and health in radius
+- O2 drains outside habitat protection
+- HP drains when O2 reaches zero
+- Habitat restores O2 and HP when nearby
 
-### Economy
+### Economy and Progression
 
-- Structures have material costs
-- Energy is generated by specific structures depending on time of day
-- Crafting consumes resources and energy
-- Some structures produce resources over time
+- Structure costs are paid from inventory resources
+- Solar and turbine output depends on day/night
+- Nuclear generator gives stable energy
+- Farm and water extractor consume energy to produce resources over time
+- Research unlocks permanent boosts (mining speed, max O2, max HP)
 
-### Progression
+### Save System
 
-Research unlocks permanent boosts and can auto-progress via laboratory behavior when powered.
+Auto-save runs during gameplay and on key transitions.
+Data is stored in local storage key `aether_save_v1` and includes:
 
-## Save Data
-
-The game automatically saves to browser local storage.
-
-Saved state includes:
-
-- World seed and tile data
-- Resources and placed structures
-- Player stats and inventory
-- Research unlock status
-- Session progress counters
+- Time/cycle counters
+- World seed and generated entities
+- Placed structures
+- Player state and inventory
+- Unlocked research
 
 ## Current Status
 
-This project is in active development and already playable.
-Recent updates include:
-
-- Improved natural resource generation
-- Initial habitat spawn and safer start
-- Inventory discard and consumable usage flow
-- Crafting panel and energy integration
-- HiDPI-friendly canvas rendering
-- Mobile touch controls and responsive panel behavior
+Playable prototype under active development.
+Current codebase focuses on core systems (survival, building, crafting, research, save/load) and responsive browser play.
 
 ## Roadmap Ideas
 
 - Deeper crafting and production chains
-- Expanded energy interactions and balancing
-- Enemy encounters, weather events, and world hazards
-- Win condition and endgame sequence
-- Achievements and long-term progression
-- Further module decomposition of runtime systems
+- Better balancing for energy and progression pacing
+- Hazards, enemies, and dynamic world events
+- Win condition / endgame sequence (escape ramp progression)
+- Achievement and long-term progression systems
 
 ## License
 
-No license file is currently included.
-If you plan to distribute this project, add an explicit license.
+There is currently no license file in the repository.
+If you plan to distribute or accept contributions, add an explicit license.
 
 ## Credits
 
-Designed and implemented as an evolving browser survival experience inspired by exploration, systems progression, and base-building gameplay.
+Designed and implemented as an evolving browser survival experience focused on exploration, progression, and base-building systems.
