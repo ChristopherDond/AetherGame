@@ -31,12 +31,13 @@ export function genWorld(seed = Math.floor(Math.random() * 99999)) {
     const cx = 8 + Math.floor(seeded(i * 97 + 13, seed) * (COLS - 16));
     const cy = 8 + Math.floor(seeded(i * 53 + 29, seed) * (ROWS - 16));
     const radius = 2 + Math.floor(seeded(i * 41 + 7, seed) * 4);
+    const maxDistSq = (radius + 0.45) * (radius + 0.45);
     for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) {
       const tx = cx + dx;
       const ty = cy + dy;
       if (tx < 1 || ty < 1 || tx >= COLS - 1 || ty >= ROWS - 1) continue;
-      const dist = Math.hypot(dx, dy);
-      if (dist > radius + 0.45) continue;
+      const distSq = dx * dx + dy * dy;
+      if (distSq > maxDistSq) continue;
       const idx = ty * COLS + tx;
       if (tiles[idx] === T.ROCK && seeded(tx * 31 + ty * 17, seed) > 0.45) {
         tiles[idx] = T.DEEP;
@@ -49,6 +50,9 @@ export function genWorld(seed = Math.floor(Math.random() * 99999)) {
 
 export function spawnRes(tiles, seed = Math.floor(Math.random() * 99999)) {
   const res = [];
+  const centerX = COLS / 2;
+  const centerY = ROWS / 2;
+  const safeRadiusSq = 4 * 4;
   const configs = [
     { type: 0, clusters: 8, size: [3, 8], prefer: (t) => t === T.DEEP || t === T.ROCK || t === T.GROUND },
     { type: 1, clusters: 7, size: [2, 7], prefer: (t) => t === T.SAND || t === T.GROUND },
@@ -70,7 +74,9 @@ export function spawnRes(tiles, seed = Math.floor(Math.random() * 99999)) {
         const y = Math.max(2, Math.min(ROWS - 3, Math.round(anchorY + Math.sin(angle) * dist)));
         const t2 = tiles[y * COLS + x];
         if (!cfg.prefer(t2)) continue;
-        if (Math.hypot(x - COLS / 2, y - ROWS / 2) < 4) continue;
+        const dx = x - centerX;
+        const dy = y - centerY;
+        if (dx * dx + dy * dy < safeRadiusSq) continue;
         res.push({
           x: x * TILE + TILE / 2 + (seeded(node * 19 + cluster, seed) - 0.5) * TILE * 0.25,
           y: y * TILE + TILE / 2 + (seeded(node * 23 + cluster, seed) - 0.5) * TILE * 0.25,

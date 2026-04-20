@@ -51,6 +51,7 @@ const CRAFT_RECIPES = [
   { id: 'battery', nm: 'Battery', out: 14, desc: '+25 EN', en: 4, needFabricator: true, inputs: { 0: 4, 11: 2 } },
   { id: 'alloy', nm: 'Alloy', out: 15, desc: 'Material versatil', en: 4, needFabricator: true, inputs: { 3: 3, 10: 1 } }
 ];
+const ROCK_DECOR_OFFSETS = [[8, 8], [24, 6], [4, 22], [26, 20], [14, 14]];
 
 function resetResearch() {
   unlockedResearch = new Set();
@@ -108,6 +109,8 @@ function normalizePlayer(player) {
     msm: 1,
     rc: 0,
     nhab: false,
+    nearRes: null,
+    invUsed: 0,
     mt: null,
     mp: 0
   };
@@ -116,6 +119,26 @@ function normalizePlayer(player) {
     p.inv = new Array(RES.length).fill(0);
   }
   return p;
+}
+
+function sumInventory() {
+  if (!P.inv) return 0;
+  let total = 0;
+  for (let i = 0; i < P.inv.length; i++) total += P.inv[i];
+  return total;
+}
+
+function hydrateStructRuntime(s) {
+  const sd = ST[s.type];
+  if (!sd) return s;
+  s.w = sd.w * TILE;
+  s.h = sd.h * TILE;
+  s.wx = s.tx * TILE;
+  s.wy = s.ty * TILE;
+  s.mx = s.wx + s.w / 2;
+  s.my = s.wy + s.h / 2;
+  s.t = s.t || 0;
+  return s;
 }
 
 function saveGame() {
@@ -316,19 +339,20 @@ function useInv(type) {
 }
 
 function updateEnergy(dt) {
-  const solar = countStruct(1);
-  const turbine = countStruct(7);
-  const nuclear = countStruct(12);
-  const farm = countStruct(5);
-  const extractor = countStruct(6);
-  const lab = countStruct(4);
+  let solar = 0;
+  let turbine = 0;
+  let nuclear = 0;
+  let lab = 0;
 
   const day = dc < 0.5 ? 1 : 0;
   const night = dc >= 0.5 ? 1 : 0;
-  const generation = solar * 4.5 * day + turbine * 4.5 * night + nuclear * 8.5;
-  P.en = clamp(P.en + generation * dt, 0, P.maxEn);
 
   for (const s of W.structs) {
+    if (s.type === 1) solar++;
+    else if (s.type === 7) turbine++;
+    else if (s.type === 12) nuclear++;
+    else if (s.type === 4) lab++;
+
     s.t = (s.t || 0) + dt;
     if (s.type === 5 && s.t >= 4.5 && P.en >= 1.5) {
       s.t = 0;
@@ -348,6 +372,9 @@ function updateEnergy(dt) {
       P.rc = clamp(P.rc + 28, 0, 100);
     }
   }
+
+  const generation = solar * 4.5 * day + turbine * 4.5 * night + nuclear * 8.5;
+  P.en = clamp(P.en + generation * dt, 0, P.maxEn);
 
   if (lab > 0 && P.rc >= 100) {
     const nextResearch = RSRCH.find((r) => !r.un && rStatus(r) === 'ok');
@@ -488,11 +515,30 @@ function placeStructAt(tp, tx, ty, free = false) {
   if (!free) {
     for (const [k, v] of Object.entries(sd.cs)) P.inv[+k] -= v;
   }
-  W.structs.push({ type: tp, tx, ty, wx: tx * TILE, wy: ty * TILE, w: sd.w * TILE, h: sd.h * TILE, hp: 100 });
+  const structure = hydrateStructRuntime({ type: tp, tx, ty, hp: 100 });
+  W.structs.push(structure);
   for (let dy = 0; dy < sd.h; dy++) for (let dx = 0; dx < sd.w; dx++) W.tiles[(ty + dy) * COLS + (tx + dx)] = T.VOID;
   if (!free) parts(tx * TILE + sd.w * TILE / 2, ty * TILE + sd.h * TILE / 2, sd.c, 16);
   if (!free) playSfx('build');
   return W.structs[W.structs.length - 1];
+}
+
+function findNearestResource(maxDist = 75) {
+  if (!W.res || W.res.length === 0) return null;
+  const maxDistSq = maxDist * maxDist;
+  let nearest = null;
+  let bestDistSq = maxDistSq;
+  for (const r of W.res) {
+    if (r.amount <= 0) continue;
+    const dx = P.x - r.x;
+    const dy = P.y - r.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestDistSq) {
+      bestDistSq = d2;
+      nearest = r;
+    }
+  }
+  return nearest;
 }
 
 function canPlace(tp, tx, ty) {
@@ -678,7 +724,7 @@ function startGame(savedState = null) {
 
   if (savedState && savedState.world && savedState.player) {
     applyResearch(savedState.research || []);
-    const structs = savedState.world.structs || [];
+    const structs = (savedState.world.structs || []).map((s) => hydrateStructRuntime(s));
     const rebuiltTiles = rebuildTilesFromSeed(savedState.world.seed || 0, structs, savedState.world.tiles || null);
     W = {
       seed: savedState.world.seed || 0,
@@ -716,6 +762,8 @@ function startGame(savedState = null) {
     dc = 0;
     fr = 0;
   }
+  P.invUsed = sumInventory();
+  P.nearRes = findNearestResource(75);
 
   keys = {};
   bmode = null;
@@ -860,14 +908,22 @@ function update(dt) {
   dc = (gt % DAY_PERIOD) / DAY_PERIOD;
   if (!bp && !ip && !rp && !crp && !discardState) updatePlayer(dt);
   updateEnergy(dt);
-  for (const p of W.parts) {
+  for (let i = 0; i < W.parts.length; i++) {
+    const p = W.parts[i];
     p.x += p.vx * dt;
     p.y += p.vy * dt;
     p.vx *= 0.88;
     p.vy *= 0.88;
     p.life -= dt;
   }
-  W.parts = W.parts.filter((p) => p.life > 0);
+  let writeIdx = 0;
+  for (let i = 0; i < W.parts.length; i++) {
+    const p = W.parts[i];
+    if (p.life > 0) {
+      W.parts[writeIdx++] = p;
+    }
+  }
+  W.parts.length = writeIdx;
   const tx = P.x - CVW / 2;
   const ty2 = P.y - CVH / 2;
   cam.x += (tx - cam.x) * 0.08;
@@ -876,6 +932,9 @@ function update(dt) {
   cam.y = Math.max(0, Math.min(WH - CVH, cam.y));
   ms.wx = ms.x + cam.x;
   ms.wy = ms.y + cam.y;
+  if (bp || ip || rp || crp || discardState) {
+    P.nearRes = findNearestResource(75);
+  }
 }
 
 function updatePlayer(dt) {
@@ -903,8 +962,12 @@ function updatePlayer(dt) {
   P.y = Math.max(20, Math.min(WH - 20, P.y));
 
   P.nhab = false;
+  const habitatRangeSq = 205 * 205;
   for (const s of W.structs) {
-    if (s.type === 0 && Math.hypot(P.x - (s.wx + s.w / 2), P.y - (s.wy + s.h / 2)) < 205) {
+    if (s.type !== 0) continue;
+    const dx = P.x - s.mx;
+    const dy = P.y - s.my;
+    if (dx * dx + dy * dy < habitatRangeSq) {
       P.nhab = true;
       break;
     }
@@ -929,7 +992,9 @@ function updatePlayer(dt) {
     }
   }
 
-  if (keys.KeyE && !bmode) doMine(dt);
+  P.nearRes = findNearestResource(75);
+  P.invUsed = sumInventory();
+  if (keys.KeyE && !bmode) doMine(dt, P.nearRes);
   else {
     P.mt = null;
     P.mp = 0;
@@ -945,17 +1010,7 @@ function updatePlayer(dt) {
   }
 }
 
-function doMine(dt) {
-  let nr = null;
-  let nd = 75;
-  for (const r of W.res) {
-    if (r.amount <= 0) continue;
-    const d = Math.hypot(P.x - r.x, P.y - r.y);
-    if (d < nd) {
-      nr = r;
-      nd = d;
-    }
-  }
+function doMine(dt, nr) {
   if (!nr) {
     P.mt = null;
     P.mp = 0;
@@ -969,8 +1024,9 @@ function doMine(dt) {
   if (fr % 5 === 0) parts(nr.x, nr.y, RES[nr.type].c, 2);
   if (P.mp >= 1) {
     P.mp = 0;
-    if (P.inv.reduce((a, b) => a + b, 0) < P.maxInv) {
+    if (P.invUsed < P.maxInv) {
       P.inv[nr.type]++;
+      P.invUsed += 1;
       nr.amount--;
       playSfx('mine');
       parts(nr.x, nr.y, RES[nr.type].c, 10);
@@ -1040,9 +1096,9 @@ function drawR(px, py, tx, ty, deep) {
   cx.fillStyle = deep ? '#07001a' : '#110828';
   cx.fillRect(px, py, TILE, TILE);
   cx.fillStyle = deep ? '#0d0030' : '#1a0e40';
-  [[8, 8], [24, 6], [4, 22], [26, 20], [14, 14]].forEach(([ox, oy]) => {
+  for (const [ox, oy] of ROCK_DECOR_OFFSETS) {
     if (fhash(tx * ox, ty * oy) > 0.55) cx.fillRect(px + ox, py + oy, fhash(tx, oy) * 10 + 4, fhash(ty, ox) * 8 + 3);
-  });
+  }
   if (deep) {
     cx.strokeStyle = 'rgba(90,0,180,0.35)';
     cx.lineWidth = 1;
@@ -1313,7 +1369,7 @@ function rHUD() {
   cx.font = '10px Courier New';
   cx.fillText(`${Math.floor(P.st)}s`, CVW - 14, 18);
   cx.fillText(`Score ${P.score}`, CVW - 14, 32);
-  cx.fillText(`Inv: ${P.inv.reduce((a, b) => a + b, 0)}`, CVW - 14, 46);
+  cx.fillText(`Inv: ${P.invUsed || 0}`, CVW - 14, 46);
 
   cx.fillStyle = 'rgba(2,0,10,0.78)';
   cx.fillRect(0, CVH - 30, CVW, 30);
@@ -1339,7 +1395,7 @@ function rHUD() {
     cx.shadowBlur = 0;
   }
 
-  const cr = W.res ? W.res.find((r) => r.amount > 0 && Math.hypot(P.x - r.x, P.y - r.y) < 75) : null;
+  const cr = P.nearRes || null;
   if (cr && !bmode) {
     const rd = RES[cr.type];
     cx.fillStyle = rd.c;
